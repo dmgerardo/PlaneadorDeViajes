@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "identidades": {
+      ".read": "auth != null",
+      "$claveNombre": {
+        ".write": "auth != null && (!data.exists() || data.val() === newData.val())"
+      }
+    },
+
+    "usuarios": {
+      ".read": "auth != null",
+      "$userId": {
+        ".write": "auth != null"
+      }
+    },
+
+    "viajes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["info/claveInvitacion"]
+    }
+  }
+}

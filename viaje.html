@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f6fed">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Viaje — Planeador</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/estilos.css?v=2">
+</head>
+<body>
+  <div class="tabs">
+    <button class="texto" id="btn-volver" style="flex:0 0 auto;">← Viajes</button>
+    <button data-vista="generales" class="activo">Generales</button>
+    <button data-vista="lugares">Lugares</button>
+    <button data-vista="calendario">Calendario</button>
+    <button data-vista="checklist">Checklist</button>
+  </div>
+
+  <div class="contenedor" id="contenido-vista">
+    <p style="text-align:center;color:var(--color-texto-suave)">Cargando…</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js?v=2"></script>
+  <script src="js/render-utils.js?v=2"></script>
+  <script src="js/db.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/vista-generales.js?v=2"></script>
+  <script src="js/vista-lugares.js?v=2"></script>
+  <script src="js/vista-calendario.js?v=2"></script>
+  <script src="js/vista-checklist.js?v=2"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const tripId = params.get("trip");
+    const contenido = document.getElementById("contenido-vista");
+    let sesionActual = null;
+    let limpiarVistaActual = null;
+
+    document.getElementById("btn-volver").addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    const vistas = {
+      generales: montarVistaGenerales,
+      lugares: montarVistaLugares,
+      calendario: montarVistaCalendario,
+      checklist: montarVistaChecklist
+    };
+
+    async function cambiarVista(nombre) {
+      document.querySelectorAll(".tabs button[data-vista]").forEach(b => {
+        b.classList.toggle("activo", b.dataset.vista === nombre);
+      });
+      if (limpiarVistaActual) { limpiarVistaActual(); limpiarVistaActual = null; }
+      limpiar(contenido);
+      limpiarVistaActual = await vistas[nombre](contenido, tripId, sesionActual);
+    }
+
+    document.querySelectorAll(".tabs button[data-vista]").forEach(btn => {
+      btn.addEventListener("click", () => cambiarVista(btn.dataset.vista));
+    });
+
+    (async function inicio() {
+      if (!tripId) { window.location.href = "index.html"; return; }
+      sesionActual = await requerirSesion();
+      if (!sesionActual) return;
+      await cambiarVista("generales");
+    })();
+  </script>
+</body>
+</html>

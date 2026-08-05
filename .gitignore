@@ -1,0 +1,11 @@
+# Credenciales reales de Firebase (usa firebase-config.example.js como plantilla al compartir)
+# js/firebase-config.js se versiona con placeholders TU_...; si algún día se pega una
+# credencial real distinta a un template, no debe subirse por accidente.
+
+# Exports/respaldos con datos de participantes
+*.export.json
+respaldos/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db

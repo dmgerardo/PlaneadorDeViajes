@@ -1,0 +1,99 @@
+<svg viewBox="0 0 1180 900" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#555"/>
+    </marker>
+  </defs>
+  <style>
+    .box { stroke-width: 1.5; rx: 10; }
+    .lbl { font-size: 14px; font-weight: 600; fill: #1a1a1a; }
+    .sub { font-size: 11px; fill: #444; }
+    .edge { stroke: #666; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    .edgelbl { font-size: 10.5px; fill: #555; }
+    .grp { fill: none; stroke: #bbb; stroke-dasharray: 4 3; rx: 12; }
+    .grptitle { font-size: 12px; fill: #777; font-weight: 600; }
+  </style>
+
+  <text x="20" y="28" font-size="20" font-weight="700" fill="#111">Planeador de Viajes — Diagrama de flujo</text>
+
+  <!-- Auth group -->
+  <rect class="grp" x="20" y="50" width="1140" height="110"/>
+  <text class="grptitle" x="32" y="68">Autenticación</text>
+  <rect class="box" x="40" y="80" width="200" height="60" fill="#fde8d8" stroke="#e08a3c"/>
+  <text class="lbl" x="140" y="105" text-anchor="middle">index.html</text>
+  <text class="sub" x="140" y="122" text-anchor="middle">Login (nombre + contraseña)</text>
+
+  <rect class="box" x="300" y="80" width="220" height="60" fill="#fde8d8" stroke="#e08a3c"/>
+  <text class="lbl" x="410" y="105" text-anchor="middle">Sesión persistente</text>
+  <text class="sub" x="410" y="122" text-anchor="middle">localStorage + Firebase Auth anónima</text>
+
+  <rect class="box" x="580" y="80" width="260" height="60" fill="#fde8d8" stroke="#e08a3c"/>
+  <text class="lbl" x="710" y="105" text-anchor="middle">Selector de viajes</text>
+  <text class="sub" x="710" y="122" text-anchor="middle">Crear viaje / Unirse con clave</text>
+
+  <rect class="box" x="900" y="80" width="220" height="60" fill="#fde8d8" stroke="#e08a3c"/>
+  <text class="lbl" x="1010" y="105" text-anchor="middle">viaje.html</text>
+  <text class="sub" x="1010" y="122" text-anchor="middle">Shell del viaje elegido</text>
+
+  <path class="edge" d="M240,110 H300"/>
+  <path class="edge" d="M520,110 H580"/>
+  <path class="edge" d="M840,110 H900"/>
+
+  <!-- Trip shell group -->
+  <rect class="grp" x="20" y="185" width="1140" height="330"/>
+  <text class="grptitle" x="32" y="203">viaje.html — Tabs (cualquier participante puede editar salvo lo marcado)</text>
+
+  <rect class="box" x="50" y="225" width="230" height="80" fill="#dfe9f7" stroke="#4a7fc1"/>
+  <text class="lbl" x="165" y="250" text-anchor="middle">1. Generales</text>
+  <text class="sub" x="165" y="268" text-anchor="middle">Fechas, ciudades, traslados</text>
+  <text class="sub" x="165" y="284" text-anchor="middle">y hospedajes pactados</text>
+
+  <rect class="box" x="330" y="225" width="230" height="80" fill="#e3f0d9" stroke="#5c9c3e"/>
+  <text class="lbl" x="445" y="250" text-anchor="middle">2. Lugares deseados</text>
+  <text class="sub" x="445" y="268" text-anchor="middle">Por ciudad, con prioridad</text>
+  <text class="sub" x="445" y="284" text-anchor="middle">ligas, mapa, aire libre ❄️</text>
+
+  <rect class="box" x="610" y="225" width="270" height="80" fill="#f6dfe8" stroke="#c15a8a"/>
+  <text class="lbl" x="745" y="250" text-anchor="middle">3. Calendario (cuadrícula)</text>
+  <text class="sub" x="745" y="268" text-anchor="middle">Días x horas, doble zona horaria</text>
+  <text class="sub" x="745" y="284" text-anchor="middle">bloques 🔒 fijado, color por ciudad</text>
+
+  <rect class="box" x="920" y="225" width="200" height="80" fill="#ece3f6" stroke="#7c5cc1"/>
+  <text class="lbl" x="1020" y="250" text-anchor="middle">4. Checklist</text>
+  <text class="sub" x="1020" y="268" text-anchor="middle">Ítems compartidos</text>
+  <text class="sub" x="1020" y="284" text-anchor="middle">checkbox por persona</text>
+
+  <!-- admin sub panel -->
+  <rect class="box" x="50" y="330" width="230" height="70" fill="#dfe9f7" stroke="#4a7fc1" stroke-dasharray="3 2"/>
+  <text class="lbl" x="165" y="352" text-anchor="middle" font-size="12.5">Administración</text>
+  <text class="sub" x="165" y="368" text-anchor="middle">Invitar (liga+clave o lista),</text>
+  <text class="sub" x="165" y="382" text-anchor="middle">promover a admin</text>
+
+  <path class="edge" d="M165,330 V400"/>
+
+  <!-- data flow into calendar -->
+  <path class="edge" d="M280,265 H330"/>
+  <text class="edgelbl" x="285" y="258">ciudades</text>
+  <path class="edge" d="M560,265 H610"/>
+  <text class="edgelbl" x="565" y="258">lugares → bloques</text>
+  <path class="edge" d="M280,255 C450,180 600,180 680,225"/>
+  <text class="edgelbl" x="420" y="178">traslados/hospedajes → bloques fijos 🔒</text>
+
+  <!-- RTDB group -->
+  <rect class="grp" x="20" y="540" width="1140" height="230"/>
+  <text class="grptitle" x="32" y="558">Firebase Realtime Database (por viaje, reglas: solo participantes)</text>
+
+  <rect class="box" x="50" y="580" width="1080" height="170" fill="#fbf6df" stroke="#c1a23c"/>
+  <text class="sub" x="70" y="605" font-family="Consolas, monospace">viajes/&#123;tripId&#125;/info · ciudades · lugares · itinerario · traslados · hospedajes · checklist · participantes</text>
+  <text class="sub" x="70" y="628" font-family="Consolas, monospace">usuarios/&#123;userId&#125;  (nombre, passwordHash)</text>
+  <text class="sub" x="70" y="651" font-family="Consolas, monospace">identidades/&#123;claveNombre&#125; → userId   (login estable entre dispositivos)</text>
+  <text class="sub" x="70" y="685" fill="#666">Un render por frame (requestAnimationFrame). Cada vista escucha solo su propio nodo,</text>
+  <text class="sub" x="70" y="702" fill="#666">no descarga el viaje completo salvo que sea necesario.</text>
+
+  <path class="edge" d="M165,410 V580" stroke-dasharray="2 2"/>
+  <path class="edge" d="M445,410 V580" stroke-dasharray="2 2"/>
+  <path class="edge" d="M745,410 V580" stroke-dasharray="2 2"/>
+  <path class="edge" d="M1020,410 V580" stroke-dasharray="2 2"/>
+
+  <text x="20" y="800" font-size="12" fill="#777">Fuera de alcance: compra de tickets o reservaciones desde la app (solo se capturan datos ya confirmados).</text>
+</svg>

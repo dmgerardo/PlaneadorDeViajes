@@ -1,0 +1,3 @@
+#!/bin/sh
+# Sube ?v=N en los HTML si el commit toca .css o .js. Ver scripts/bump-version.py.
+python3 scripts/bump-version.py || python scripts/bump-version.py

@@ -6,13 +6,13 @@
 // y pegar aquí sus propios valores (ver README.md).
 
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyAZf5OOP8hDPgbEL-l_C8oD3Mg1Nwl7N-k",
+  authDomain: "planeadordeviajes.firebaseapp.com",
+  databaseURL: "https://planeadordeviajes-default-rtdb.firebaseio.com",
+  projectId: "planeadordeviajes",
+  storageBucket: "planeadordeviajes.firebasestorage.app",
+  messagingSenderId: "613286451710",
+  appId: "1:613286451710:web:5a6ee125c97e70f15848af"
 };
 
 firebase.initializeApp(firebaseConfig);

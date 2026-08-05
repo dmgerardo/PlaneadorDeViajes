@@ -62,3 +62,38 @@ function localAUTC(fechaStr, horaStr, zonaHoraria) {
 function limpiar(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
+
+// Modal genérico: reemplaza a prompt()/confirm() para captura de datos.
+// contenidoHTML debe incluir su propio <form id="..."> con los campos.
+// Se cierra solo al hacer click fuera, con la tecla Escape, o llamando a cerrar().
+function abrirModal(contenidoHTML) {
+  const fondo = document.createElement("div");
+  fondo.className = "modal-fondo";
+  fondo.innerHTML = `<div class="modal">${contenidoHTML}</div>`;
+  document.body.appendChild(fondo);
+
+  const cerrar = () => fondo.remove();
+  fondo.addEventListener("click", e => { if (e.target === fondo) cerrar(); });
+  const escuchaEscape = e => { if (e.key === "Escape") { cerrar(); document.removeEventListener("keydown", escuchaEscape); } };
+  document.addEventListener("keydown", escuchaEscape);
+
+  return { fondo, modal: fondo.querySelector(".modal"), cerrar };
+}
+
+// Lista de zonas horarias IANA soportadas por el navegador, para usarse en <select>
+// en vez de que el usuario tenga que escribir el nombre exacto a mano.
+const ZONAS_HORARIAS = (typeof Intl.supportedValuesOf === "function")
+  ? Intl.supportedValuesOf("timeZone")
+  : [
+      "America/Mexico_City", "America/New_York", "America/Chicago", "America/Denver",
+      "America/Los_Angeles", "America/Bogota", "America/Lima", "America/Santiago",
+      "America/Buenos_Aires", "America/Sao_Paulo", "Europe/Madrid", "Europe/London",
+      "Europe/Paris", "Europe/Rome", "Asia/Tokyo", "Asia/Shanghai", "Asia/Dubai",
+      "Australia/Sydney", "UTC"
+    ];
+
+function opcionesZonaHoraria(seleccionada) {
+  return ZONAS_HORARIAS.map(z =>
+    `<option value="${esc(z)}"${z === seleccionada ? " selected" : ""}>${esc(z.replace(/_/g, " "))}</option>`
+  ).join("");
+}

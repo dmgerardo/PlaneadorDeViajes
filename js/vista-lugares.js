@@ -84,39 +84,62 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
     renderLista();
   });
 
-  document.getElementById("l-btn-agregar").addEventListener("click", async () => {
+  document.getElementById("l-btn-agregar").addEventListener("click", () => {
     const idsCiudades = Object.keys(ciudadesCache);
     if (idsCiudades.length === 0) {
       alert("Primero agrega al menos una ciudad en la pestaña Generales.");
       return;
     }
-    const nombre = prompt("Nombre del lugar:");
-    if (!nombre || !nombre.trim()) return;
 
-    const opcionesCiudad = idsCiudades.map((id, i) => `${i + 1}) ${ciudadesCache[id].nombre}`).join("\n");
-    const seleccion = prompt(`¿En qué ciudad?\n${opcionesCiudad}`, "1");
-    const ciudadId = idsCiudades[Number(seleccion) - 1];
-    if (!ciudadId) { alert("Ciudad no válida."); return; }
+    const { modal, cerrar } = abrirModal(`
+      <h3>Agregar lugar</h3>
+      <form id="form-lugar">
+        <label for="fl-nombre">Nombre</label>
+        <input id="fl-nombre" type="text" placeholder="Ej. Empire State" required autofocus>
+        <label for="fl-ciudad">Ciudad</label>
+        <select id="fl-ciudad" required>
+          ${idsCiudades.map(id => `<option value="${esc(id)}">${esc(ciudadesCache[id].nombre)}</option>`).join("")}
+        </select>
+        <label for="fl-categoria">Prioridad</label>
+        <select id="fl-categoria" required>
+          <option value="deseable">Deseable</option>
+          <option value="importante">Importante</option>
+          <option value="no_negociable">No negociable</option>
+        </select>
+        <label for="fl-mapa">Liga de mapa</label>
+        <input id="fl-mapa" type="url" placeholder="https://maps.google.com/… (opcional)">
+        <label for="fl-liga">Liga de interés adicional</label>
+        <input id="fl-liga" type="url" placeholder="https://… (opcional)">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <input id="fl-aire-libre" type="checkbox" style="width:auto;">
+          ❄️ Actividad al aire libre (requiere ropa de intemperie)
+        </label>
+        <label for="fl-notas">Notas</label>
+        <textarea id="fl-notas" placeholder="Opcional"></textarea>
+        <div class="fila-botones">
+          <button type="submit">Agregar</button>
+          <button type="button" class="secundario" id="fl-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#fl-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-lugar").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nombre = modal.querySelector("#fl-nombre").value.trim();
+      const ciudadId = modal.querySelector("#fl-ciudad").value;
+      const categoria = modal.querySelector("#fl-categoria").value;
+      const liga_mapa = modal.querySelector("#fl-mapa").value.trim();
+      const ligaExtra = modal.querySelector("#fl-liga").value.trim();
+      const aireLibre = modal.querySelector("#fl-aire-libre").checked;
+      const notas = modal.querySelector("#fl-notas").value.trim();
+      if (!nombre || !ciudadId) return;
 
-    const categoria = prompt("Prioridad: deseable / importante / no_negociable", "deseable");
-    if (!["deseable", "importante", "no_negociable"].includes(categoria)) {
-      alert("Prioridad no válida.");
-      return;
-    }
-
-    const liga_mapa = prompt("Liga de mapa (opcional):") || "";
-    const ligaExtra = prompt("Liga de interés adicional (opcional):") || "";
-    const aireLibre = confirm("¿Es una actividad al aire libre (requiere ropa de intemperie)?");
-    const notas = prompt("Notas (opcional):") || "";
-
-    await agregar(refLugares, {
-      nombre: nombre.trim(),
-      ciudadId,
-      categoria,
-      liga_mapa,
-      ligas: ligaExtra ? [ligaExtra] : [],
-      aireLibre,
-      notas
+      await agregar(refLugares, {
+        nombre, ciudadId, categoria, liga_mapa,
+        ligas: ligaExtra ? [ligaExtra] : [],
+        aireLibre, notas
+      });
+      cerrar();
     });
   });
 

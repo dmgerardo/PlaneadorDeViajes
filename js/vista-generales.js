@@ -55,7 +55,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       <label>Fecha fin</label>
       <input id="g-fecha-fin" type="date" value="${esc(info.fechaFin || "")}">
       <label>Zona horaria de origen</label>
-      <input id="g-zona-origen" type="text" value="${esc(info.zonaOrigen || "America/Mexico_City")}" placeholder="America/Mexico_City">
+      <select id="g-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
       <label>Clave de invitación</label>
       <input type="text" value="${esc(info.claveInvitacion || "")}" readonly>
     `;
@@ -181,43 +181,119 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     const clave = infoCache.claveInvitacion;
     if (!clave) return;
     const liga = new URL(`index.html?unirse=${encodeURIComponent(clave)}`, window.location.href).toString();
+    const boton = document.getElementById("g-btn-copiar-liga");
     try {
       await navigator.clipboard.writeText(liga);
-      alert("Liga de invitación copiada. Ya la puedes pegar en tu mensaje.");
+      const textoOriginal = boton.textContent;
+      boton.textContent = "✅ Copiada";
+      setTimeout(() => { boton.textContent = textoOriginal; }, 1800);
     } catch (e) {
-      prompt("Copia esta liga manualmente:", liga);
+      const { modal, cerrar } = abrirModal(`
+        <h3>Liga de invitación</h3>
+        <p style="font-size:13px;color:var(--color-texto-suave)">No se pudo copiar automáticamente. Selecciona y copia el texto:</p>
+        <input type="text" value="${esc(liga)}" readonly onclick="this.select()">
+        <div class="fila-botones"><button type="button" id="li-cerrar">Cerrar</button></div>
+      `);
+      modal.querySelector("#li-cerrar").addEventListener("click", cerrar);
+      modal.querySelector("input").select();
     }
   });
 
-  document.getElementById("g-btn-ciudad").addEventListener("click", async () => {
-    const nombre = prompt("Nombre de la ciudad:");
-    if (!nombre || !nombre.trim()) return;
-    const zonaHoraria = prompt("Zona horaria IANA (ej. America/New_York):", "America/New_York");
-    if (!zonaHoraria) return;
-    await agregar(refCiudades, { nombre: nombre.trim(), zonaHoraria, orden: Object.keys(ciudadesCache).length });
+  document.getElementById("g-btn-ciudad").addEventListener("click", () => {
+    const { modal, cerrar } = abrirModal(`
+      <h3>Agregar ciudad</h3>
+      <form id="form-ciudad">
+        <label for="fc-nombre">Nombre</label>
+        <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus>
+        <label for="fc-zona">Zona horaria</label>
+        <select id="fc-zona" required>${opcionesZonaHoraria(infoCache.zonaOrigen || "America/Mexico_City")}</select>
+        <div class="fila-botones">
+          <button type="submit">Agregar</button>
+          <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#fc-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-ciudad").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nombre = modal.querySelector("#fc-nombre").value.trim();
+      const zonaHoraria = modal.querySelector("#fc-zona").value;
+      if (!nombre || !zonaHoraria) return;
+      await agregar(refCiudades, { nombre, zonaHoraria, orden: Object.keys(ciudadesCache).length });
+      cerrar();
+    });
   });
 
-  document.getElementById("g-btn-traslado").addEventListener("click", async () => {
-    const tipo = prompt("Tipo (vuelo/tren/bus/auto):", "vuelo");
-    if (!tipo) return;
-    const origen = prompt("Origen:") || "";
-    const destino = prompt("Destino:") || "";
-    const fecha = prompt("Fecha de salida (AAAA-MM-DD):");
-    const hora = prompt("Hora de salida local origen (HH:MM, 24h):", "09:00");
-    if (!fecha || !hora) return;
-    const confirmacion = prompt("Clave/número de confirmación:") || "";
-    const inicioUTC = new Date(`${fecha}T${hora}:00Z`).toISOString();
-    await agregar(refTraslados, { tipo, origen, destino, inicioUTC, confirmacion });
+  document.getElementById("g-btn-traslado").addEventListener("click", () => {
+    const { modal, cerrar } = abrirModal(`
+      <h3>Agregar traslado</h3>
+      <form id="form-traslado">
+        <label for="ft-tipo">Tipo</label>
+        <select id="ft-tipo" required>
+          <option value="vuelo">Vuelo</option>
+          <option value="tren">Tren</option>
+          <option value="bus">Autobús</option>
+          <option value="auto">Auto</option>
+        </select>
+        <label for="ft-origen">Origen</label>
+        <input id="ft-origen" type="text" placeholder="Ej. CDMX" required autofocus>
+        <label for="ft-destino">Destino</label>
+        <input id="ft-destino" type="text" placeholder="Ej. Nueva York" required>
+        <label for="ft-fecha">Fecha de salida</label>
+        <input id="ft-fecha" type="date" required>
+        <label for="ft-hora">Hora de salida (hora de origen)</label>
+        <input id="ft-hora" type="time" value="09:00" required>
+        <label for="ft-confirmacion">Clave/número de confirmación</label>
+        <input id="ft-confirmacion" type="text" placeholder="Opcional">
+        <div class="fila-botones">
+          <button type="submit">Agregar</button>
+          <button type="button" class="secundario" id="ft-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#ft-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-traslado").addEventListener("submit", async e => {
+      e.preventDefault();
+      const tipo = modal.querySelector("#ft-tipo").value;
+      const origen = modal.querySelector("#ft-origen").value.trim();
+      const destino = modal.querySelector("#ft-destino").value.trim();
+      const fecha = modal.querySelector("#ft-fecha").value;
+      const hora = modal.querySelector("#ft-hora").value;
+      const confirmacion = modal.querySelector("#ft-confirmacion").value.trim();
+      if (!origen || !destino || !fecha || !hora) return;
+      const inicioUTC = localAUTC(fecha, hora, infoCache.zonaOrigen || "America/Mexico_City");
+      await agregar(refTraslados, { tipo, origen, destino, inicioUTC, confirmacion });
+      cerrar();
+    });
   });
 
-  document.getElementById("g-btn-hospedaje").addEventListener("click", async () => {
-    const nombre = prompt("Nombre del hospedaje:");
-    if (!nombre) return;
-    const fecha = prompt("Fecha de check-in (AAAA-MM-DD):");
-    if (!fecha) return;
-    const claveReservacion = prompt("Clave/número de reservación:") || "";
-    const checkinUTC = new Date(`${fecha}T15:00:00Z`).toISOString();
-    await agregar(refHospedajes, { nombre, checkinUTC, claveReservacion });
+  document.getElementById("g-btn-hospedaje").addEventListener("click", () => {
+    const { modal, cerrar } = abrirModal(`
+      <h3>Agregar hospedaje</h3>
+      <form id="form-hospedaje">
+        <label for="fh-nombre">Nombre</label>
+        <input id="fh-nombre" type="text" placeholder="Ej. Hotel Plaza" required autofocus>
+        <label for="fh-fecha">Fecha de check-in</label>
+        <input id="fh-fecha" type="date" required>
+        <label for="fh-confirmacion">Clave/número de reservación</label>
+        <input id="fh-confirmacion" type="text" placeholder="Opcional">
+        <div class="fila-botones">
+          <button type="submit">Agregar</button>
+          <button type="button" class="secundario" id="fh-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#fh-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-hospedaje").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nombre = modal.querySelector("#fh-nombre").value.trim();
+      const fecha = modal.querySelector("#fh-fecha").value;
+      const claveReservacion = modal.querySelector("#fh-confirmacion").value.trim();
+      if (!nombre || !fecha) return;
+      const checkinUTC = localAUTC(fecha, "15:00", infoCache.zonaOrigen || "America/Mexico_City");
+      await agregar(refHospedajes, { nombre, checkinUTC, claveReservacion });
+      cerrar();
+    });
   });
 
   const cancelarInfo = escuchar(refInfo, renderInfo);

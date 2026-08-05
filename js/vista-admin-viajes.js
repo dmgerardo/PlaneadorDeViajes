@@ -53,16 +53,19 @@ if (claveUnirseURL) document.getElementById("aviso-invitacion").classList.remove
 // Une a la sesión al viaje con esa clave y navega directo a él (usado por la liga de invitación).
 async function unirseYAbrir(sesion, clave) {
   const tripId = await unirseAViaje(sesion, clave);
-  if (tripId) window.location.href = `viaje.html?trip=${encodeURIComponent(tripId)}`;
+  if (tripId) {
+    window.location.href = `viaje.html?trip=${encodeURIComponent(tripId)}`;
+  } else {
+    document.getElementById("error-login").textContent = "La liga de invitación ya no es válida.";
+    await mostrarPantallaViajes(sesion);
+  }
   return tripId;
 }
 
+// Devuelve el tripId si la clave existe, o null (sin escribir nada) si no.
 async function unirseAViaje(sesion, clave) {
   const snap = await db.ref("viajes").orderByChild("info/claveInvitacion").equalTo(clave.trim().toUpperCase()).get();
-  if (!snap.exists()) {
-    alert("No se encontró ningún viaje con esa clave.");
-    return null;
-  }
+  if (!snap.exists()) return null;
   const [tripId] = Object.keys(snap.val());
   await db.ref(`viajes/${tripId}/participantes/${sesion.userId}`).set({ rol: "participante", nombre: sesion.nombre });
   await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${tripId}`).set(true);
@@ -92,34 +95,70 @@ document.getElementById("campo-contrasena").addEventListener("keydown", e => {
 
 document.getElementById("btn-salir").addEventListener("click", cerrarSesion);
 
-document.getElementById("btn-crear-viaje").addEventListener("click", async () => {
+document.getElementById("btn-crear-viaje").addEventListener("click", () => {
   const sesion = obtenerSesion();
-  const nombreViaje = prompt("Nombre del viaje:");
-  if (!nombreViaje || !nombreViaje.trim()) return;
+  const { modal, cerrar } = abrirModal(`
+    <h3>Crear viaje</h3>
+    <form id="form-crear-viaje">
+      <label for="cv-nombre">Nombre del viaje</label>
+      <input id="cv-nombre" type="text" placeholder="Ej. NY/WA 2026" required autofocus>
+      <div class="fila-botones">
+        <button type="submit">Crear</button>
+        <button type="button" class="secundario" id="cv-cancelar">Cancelar</button>
+      </div>
+    </form>
+  `);
+  modal.querySelector("#cv-cancelar").addEventListener("click", cerrar);
+  modal.querySelector("#form-crear-viaje").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nombreViaje = modal.querySelector("#cv-nombre").value.trim();
+    if (!nombreViaje) return;
 
-  const claveInvitacion = generarClaveInvitacion();
-  const nuevaRef = db.ref("viajes").push();
-  await nuevaRef.set({
-    info: {
-      nombre: nombreViaje.trim(),
-      fechaInicio: "",
-      fechaFin: "",
-      zonaOrigen: "America/Mexico_City",
-      claveInvitacion
-    },
-    participantes: { [sesion.userId]: { rol: "admin", nombre: sesion.nombre } }
+    const claveInvitacion = generarClaveInvitacion();
+    const nuevaRef = db.ref("viajes").push();
+    await nuevaRef.set({
+      info: {
+        nombre: nombreViaje,
+        fechaInicio: "",
+        fechaFin: "",
+        zonaOrigen: "America/Mexico_City",
+        claveInvitacion
+      },
+      participantes: { [sesion.userId]: { rol: "admin", nombre: sesion.nombre } }
+    });
+    await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${nuevaRef.key}`).set(true);
+    // El resto (fechas, zona horaria, ciudades…) se llena en la pestaña Generales del viaje.
+    window.location.href = `viaje.html?trip=${encodeURIComponent(nuevaRef.key)}`;
   });
-  await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${nuevaRef.key}`).set(true);
-  // El resto (fechas, zona horaria, ciudades…) se llena en la pestaña Generales del viaje.
-  window.location.href = `viaje.html?trip=${encodeURIComponent(nuevaRef.key)}`;
 });
 
-document.getElementById("btn-unirse-viaje").addEventListener("click", async () => {
+document.getElementById("btn-unirse-viaje").addEventListener("click", () => {
   const sesion = obtenerSesion();
-  const clave = prompt("Clave de invitación del viaje:");
-  if (!clave || !clave.trim()) return;
-  const tripId = await unirseAViaje(sesion, clave);
-  if (tripId) await mostrarPantallaViajes(sesion);
+  const { modal, cerrar } = abrirModal(`
+    <h3>Unirme a un viaje</h3>
+    <form id="form-unirse-viaje">
+      <label for="uv-clave">Clave de invitación</label>
+      <input id="uv-clave" type="text" placeholder="Ej. A4102MLC" required autofocus style="text-transform:uppercase;">
+      <div class="error" id="uv-error"></div>
+      <div class="fila-botones">
+        <button type="submit">Unirme</button>
+        <button type="button" class="secundario" id="uv-cancelar">Cancelar</button>
+      </div>
+    </form>
+  `);
+  modal.querySelector("#uv-cancelar").addEventListener("click", cerrar);
+  modal.querySelector("#form-unirse-viaje").addEventListener("submit", async e => {
+    e.preventDefault();
+    const clave = modal.querySelector("#uv-clave").value.trim();
+    if (!clave) return;
+    const tripId = await unirseAViaje(sesion, clave);
+    if (!tripId) {
+      modal.querySelector("#uv-error").textContent = "No se encontró ningún viaje con esa clave.";
+      return;
+    }
+    cerrar();
+    await mostrarPantallaViajes(sesion);
+  });
 });
 
 (async function inicio() {

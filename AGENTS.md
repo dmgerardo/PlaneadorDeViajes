@@ -42,6 +42,13 @@ vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos con
 
 ## Invariantes y convenciones
 
+- **Captura de datos siempre vía formulario en modal, nunca `prompt()`.** Usa
+  `abrirModal(html)` (`render-utils.js`): recibe el HTML de un `<form>`, lo inserta en
+  `.modal-fondo > .modal`, y devuelve `{ modal, cerrar }`. El propio `<form>` maneja su
+  `submit` (con `e.preventDefault()`) y llama a `cerrar()` al terminar. Selects en vez de
+  texto libre cuando el valor debe ser válido (p.ej. zona horaria: `opcionesZonaHoraria()`
+  usa `Intl.supportedValuesOf("timeZone")`). `confirm()` nativo sigue siendo aceptable solo
+  para confirmar una acción destructiva (borrar), no para capturar datos.
 - **Todo texto dinámico al DOM pasa por `esc()`** (`js/render-utils.js`) antes de insertarse
   vía `innerHTML`. Sin excepciones — es la única defensa anti-XSS del proyecto.
 - **Fechas/horas se guardan siempre en UTC** (ISO 8601, sufijo `Z`) en Firebase. La

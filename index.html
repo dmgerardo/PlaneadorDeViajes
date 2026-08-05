@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Planeador">
 <title>Planeador de Viajes</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=3">
+<link rel="stylesheet" href="css/estilos.css?v=4">
 </head>
 <body>
   <div class="contenedor" style="max-width:480px;">
@@ -20,6 +20,9 @@
       <h2>Iniciar sesión</h2>
       <p style="font-size:13px;color:var(--color-texto-suave)">
         Si tu nombre no existe todavía, se crea tu cuenta con la contraseña que escribas.
+      </p>
+      <p id="aviso-invitacion" class="oculto" style="font-size:13px;color:var(--color-primario);">
+        Al entrar te unirás automáticamente al viaje de la liga que abriste.
       </p>
       <label for="campo-nombre">Nombre</label>
       <input id="campo-nombre" type="text" autocomplete="username" placeholder="Tu nombre">
@@ -54,10 +57,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/firebase-config.js?v=3"></script>
-  <script src="js/render-utils.js?v=3"></script>
-  <script src="js/db.js?v=3"></script>
-  <script src="js/auth.js?v=3"></script>
-  <script src="js/vista-admin-viajes.js?v=3"></script>
+  <script src="js/firebase-config.js?v=4"></script>
+  <script src="js/render-utils.js?v=4"></script>
+  <script src="js/db.js?v=4"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/vista-admin-viajes.js?v=4"></script>
 </body>
 </html>

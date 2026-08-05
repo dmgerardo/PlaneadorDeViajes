@@ -47,6 +47,28 @@ async function mostrarPantallaViajes(sesion) {
   }
 }
 
+const claveUnirseURL = new URLSearchParams(window.location.search).get("unirse");
+if (claveUnirseURL) document.getElementById("aviso-invitacion").classList.remove("oculto");
+
+// Une a la sesión al viaje con esa clave y navega directo a él (usado por la liga de invitación).
+async function unirseYAbrir(sesion, clave) {
+  const tripId = await unirseAViaje(sesion, clave);
+  if (tripId) window.location.href = `viaje.html?trip=${encodeURIComponent(tripId)}`;
+  return tripId;
+}
+
+async function unirseAViaje(sesion, clave) {
+  const snap = await db.ref("viajes").orderByChild("info/claveInvitacion").equalTo(clave.trim().toUpperCase()).get();
+  if (!snap.exists()) {
+    alert("No se encontró ningún viaje con esa clave.");
+    return null;
+  }
+  const [tripId] = Object.keys(snap.val());
+  await db.ref(`viajes/${tripId}/participantes/${sesion.userId}`).set({ rol: "participante", nombre: sesion.nombre });
+  await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${tripId}`).set(true);
+  return tripId;
+}
+
 document.getElementById("btn-entrar").addEventListener("click", async () => {
   const nombre = document.getElementById("campo-nombre").value;
   const contrasena = document.getElementById("campo-contrasena").value;
@@ -54,6 +76,10 @@ document.getElementById("btn-entrar").addEventListener("click", async () => {
   errorEl.textContent = "";
   try {
     const sesion = await iniciarSesion(nombre, contrasena);
+    if (claveUnirseURL) {
+      await unirseYAbrir(sesion, claveUnirseURL);
+      return;
+    }
     await mostrarPantallaViajes(sesion);
   } catch (e) {
     errorEl.textContent = e.message;
@@ -70,47 +96,39 @@ document.getElementById("btn-crear-viaje").addEventListener("click", async () =>
   const sesion = obtenerSesion();
   const nombreViaje = prompt("Nombre del viaje:");
   if (!nombreViaje || !nombreViaje.trim()) return;
-  const fechaInicio = prompt("Fecha de inicio (AAAA-MM-DD):", "");
-  const fechaFin = prompt("Fecha de fin (AAAA-MM-DD):", "");
-  const zonaOrigen = prompt("Zona horaria de origen (ej. America/Mexico_City):", "America/Mexico_City");
 
   const claveInvitacion = generarClaveInvitacion();
   const nuevaRef = db.ref("viajes").push();
   await nuevaRef.set({
     info: {
       nombre: nombreViaje.trim(),
-      fechaInicio: fechaInicio || "",
-      fechaFin: fechaFin || "",
-      zonaOrigen: zonaOrigen || "America/Mexico_City",
+      fechaInicio: "",
+      fechaFin: "",
+      zonaOrigen: "America/Mexico_City",
       claveInvitacion
     },
     participantes: { [sesion.userId]: { rol: "admin", nombre: sesion.nombre } }
   });
   await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${nuevaRef.key}`).set(true);
-  alert(`Viaje creado. Clave de invitación: ${claveInvitacion}`);
-  await mostrarPantallaViajes(sesion);
+  // El resto (fechas, zona horaria, ciudades…) se llena en la pestaña Generales del viaje.
+  window.location.href = `viaje.html?trip=${encodeURIComponent(nuevaRef.key)}`;
 });
 
 document.getElementById("btn-unirse-viaje").addEventListener("click", async () => {
   const sesion = obtenerSesion();
   const clave = prompt("Clave de invitación del viaje:");
   if (!clave || !clave.trim()) return;
-
-  const snap = await db.ref("viajes").orderByChild("info/claveInvitacion").equalTo(clave.trim().toUpperCase()).get();
-  if (!snap.exists()) {
-    alert("No se encontró ningún viaje con esa clave.");
-    return;
-  }
-  const [tripId] = Object.keys(snap.val());
-  await db.ref(`viajes/${tripId}/participantes/${sesion.userId}`).set({ rol: "participante", nombre: sesion.nombre });
-  await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${tripId}`).set(true);
-  await mostrarPantallaViajes(sesion);
+  const tripId = await unirseAViaje(sesion, clave);
+  if (tripId) await mostrarPantallaViajes(sesion);
 });
 
 (async function inicio() {
   const sesion = obtenerSesion();
-  if (sesion) {
-    await asegurarAuthAnonima();
-    await mostrarPantallaViajes(sesion);
+  if (!sesion) return;
+  await asegurarAuthAnonima();
+  if (claveUnirseURL) {
+    await unirseYAbrir(sesion, claveUnirseURL);
+    return;
   }
+  await mostrarPantallaViajes(sesion);
 })();

@@ -23,8 +23,9 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       <h3>Participantes</h3>
       <div id="g-participantes"></div>
       <p style="font-size:12px;color:var(--color-texto-suave)">
-        Comparte la clave de invitación de este viaje para que otros se unan desde "Unirme con clave".
+        Comparte la liga de invitación de este viaje para que otros se unan directamente.
       </p>
+      <button class="secundario" id="g-btn-copiar-liga">🔗 Copiar liga de invitación</button>
     </div>
   `;
 
@@ -35,8 +36,16 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   const refParticipantes = refNodo(tripId, "participantes");
 
   let ciudadesCache = {};
+  let infoCache = {};
+
+  function sumarDias(fechaStr, dias) {
+    const fecha = new Date(`${fechaStr}T00:00:00Z`);
+    fecha.setUTCDate(fecha.getUTCDate() + dias);
+    return fecha.toISOString().slice(0, 10);
+  }
 
   const renderInfo = programarRender(info => {
+    infoCache = info;
     const el = document.getElementById("g-info");
     if (!el) return;
     el.innerHTML = `
@@ -50,7 +59,17 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       <label>Clave de invitación</label>
       <input type="text" value="${esc(info.claveInvitacion || "")}" readonly>
     `;
-    document.getElementById("g-fecha-inicio").addEventListener("change", e => refInfo.update({ fechaInicio: e.target.value }));
+    document.getElementById("g-fecha-inicio").addEventListener("change", e => {
+      const fechaInicio = e.target.value;
+      const actualizacion = { fechaInicio };
+      // Si no hay fecha fin capturada, la proponemos como un día después.
+      if (fechaInicio && !infoCache.fechaFin) {
+        const fechaFinDefault = sumarDias(fechaInicio, 1);
+        document.getElementById("g-fecha-fin").value = fechaFinDefault;
+        actualizacion.fechaFin = fechaFinDefault;
+      }
+      refInfo.update(actualizacion);
+    });
     document.getElementById("g-fecha-fin").addEventListener("change", e => refInfo.update({ fechaFin: e.target.value }));
     document.getElementById("g-zona-origen").addEventListener("change", e => refInfo.update({ zonaOrigen: e.target.value }));
   });
@@ -156,6 +175,18 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       }
       el.appendChild(fila);
     });
+  });
+
+  document.getElementById("g-btn-copiar-liga").addEventListener("click", async () => {
+    const clave = infoCache.claveInvitacion;
+    if (!clave) return;
+    const liga = new URL(`index.html?unirse=${encodeURIComponent(clave)}`, window.location.href).toString();
+    try {
+      await navigator.clipboard.writeText(liga);
+      alert("Liga de invitación copiada. Ya la puedes pegar en tu mensaje.");
+    } catch (e) {
+      prompt("Copia esta liga manualmente:", liga);
+    }
   });
 
   document.getElementById("g-btn-ciudad").addEventListener("click", async () => {

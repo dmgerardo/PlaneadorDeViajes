@@ -392,20 +392,15 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   text-transform: capitalize;
 }
 
-/* Timeline de ciudades por día */
-.ciudad-timeline { display: flex; flex-direction: column; gap: 2px; overflow-x: auto; overflow-y: hidden; }
+/* Timeline de ciudades por día (pestaña Ruta) — siempre vertical, un día
+   por fila, sin importar el ancho de pantalla: es más clara que acostada
+   en pantallas anchas y evita tener que dar scroll horizontal. */
+.ciudad-timeline { display: flex; flex-direction: column; gap: 4px; }
 .ct-dia {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
-  min-height: 30px; padding: 4px 10px; border-radius: 8px;
-  background: var(--color-fondo); font-size: 12px; cursor: pointer;
+  flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
+  min-height: 48px; padding: 10px 16px; border-radius: 10px;
+  background: var(--color-fondo); font-size: 14px; cursor: pointer;
   touch-action: none; user-select: none;
 }
 .ct-fecha { font-weight: 700; font-family: var(--font-heading); flex: 0 0 auto; }
-.ct-ciudad { font-size: 11.5px; }
-
-/* En pantallas anchas o celular en horizontal, el timeline se acuesta y los
-   días quedan uno junto a otro en vez de apilados. */
-@media (min-width: 700px) {
-  .ciudad-timeline { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
-  .ct-dia { flex-direction: column; gap: 2px; min-width: 62px; text-align: center; }
-}
+.ct-ciudad { font-size: 13px; }

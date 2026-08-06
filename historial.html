@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=9">
+<link rel="stylesheet" href="css/estilos.css?v=10">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,18 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v10 — Edición, checklist mejorado y fix de checkboxes</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Corregido:</strong> los checkboxes (checklist y "aire libre" en lugares) no se veían ni marcaban — el estilo de campos de texto se les aplicaba por error.</li>
+        <li>Ciudades, traslados, hospedajes y lugares ahora se pueden editar, no solo borrar y recapturar.</li>
+        <li>Checklist: botón para agregar varios ítems de golpe (separados por comas), reordenar arrastrando desde ⠿⠿, e importar la lista de otro de tus viajes.</li>
+        <li>Lugares: filtro por prioridad y resumen de cuántos lugares hay por ciudad.</li>
+        <li>Las fechas de traslados y hospedajes ahora quedan limitadas al rango de fechas del viaje.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v9 — Duración de traslados, noches de hospedaje y ajustes de UI</h3>
@@ -83,6 +95,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=9"></script>
+  <script src="js/version.js?v=10"></script>
 </body>
 </html>

@@ -36,6 +36,8 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   const refParticipantes = refNodo(tripId, "participantes");
 
   let ciudadesCache = {};
+  let trasladosCache = {};
+  let hospedajesCache = {};
   let infoCache = {};
 
   function sumarDias(fechaStr, dias) {
@@ -54,6 +56,14 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     return ultima.zonaHoraria;
   }
 
+  // Atributos min/max para <input type="date"> — mantiene la captura dentro del
+  // rango de fechas del viaje si ya está definido.
+  function limitesFecha() {
+    const min = infoCache.fechaInicio ? ` min="${esc(infoCache.fechaInicio)}"` : "";
+    const max = infoCache.fechaFin ? ` max="${esc(infoCache.fechaFin)}"` : "";
+    return min + max;
+  }
+
   const renderInfo = programarRender(info => {
     infoCache = info;
     const el = document.getElementById("g-info");
@@ -63,7 +73,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       <label>Fecha inicio</label>
       <input id="g-fecha-inicio" type="date" value="${esc(info.fechaInicio || "")}">
       <label>Fecha fin</label>
-      <input id="g-fecha-fin" type="date" value="${esc(info.fechaFin || "")}">
+      <input id="g-fecha-fin" type="date" value="${esc(info.fechaFin || "")}" min="${esc(info.fechaInicio || "")}">
       <label>Zona horaria de origen</label>
       <select id="g-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
       <label>Clave de invitación</label>
@@ -72,6 +82,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     document.getElementById("g-fecha-inicio").addEventListener("change", e => {
       const fechaInicio = e.target.value;
       const actualizacion = { fechaInicio };
+      document.getElementById("g-fecha-fin").min = fechaInicio;
       // Si no hay fecha fin capturada, la proponemos como un día después.
       if (fechaInicio && !infoCache.fechaFin) {
         const fechaFinDefault = sumarDias(fechaInicio, 1);
@@ -99,9 +110,13 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       fila.className = "lista-item";
       fila.innerHTML = `
         <div><strong>${esc(c.nombre)}</strong><br><span style="font-size:12px;color:var(--color-texto-suave)">${esc(c.zonaHoraria)}</span></div>
-        <button class="texto peligro-texto" data-id="${esc(id)}">Quitar</button>
+        <div class="fila-botones" style="margin:0;">
+          <button class="texto" data-accion="editar">Editar</button>
+          <button class="texto" data-accion="quitar">Quitar</button>
+        </div>
       `;
-      fila.querySelector("button").addEventListener("click", async () => {
+      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioCiudad(id));
+      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
         if (confirm(`¿Quitar ciudad "${c.nombre}"?`)) await eliminar(refCiudades.child(id));
       });
       el.appendChild(fila);
@@ -109,6 +124,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   });
 
   const renderTraslados = programarRender(traslados => {
+    trasladosCache = traslados;
     const el = document.getElementById("g-traslados");
     if (!el) return;
     limpiar(el);
@@ -130,9 +146,13 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
             Confirmación: ${esc(t.confirmacion || "-")}
           </span>
         </div>
-        <button class="texto" data-id="${esc(id)}">Quitar</button>
+        <div class="fila-botones" style="margin:0;">
+          <button class="texto" data-accion="editar">Editar</button>
+          <button class="texto" data-accion="quitar">Quitar</button>
+        </div>
       `;
-      fila.querySelector("button").addEventListener("click", async () => {
+      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioTraslado(id));
+      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
         if (confirm("¿Quitar este traslado?")) await eliminar(refTraslados.child(id));
       });
       el.appendChild(fila);
@@ -140,6 +160,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   });
 
   const renderHospedajes = programarRender(hospedajes => {
+    hospedajesCache = hospedajes;
     const el = document.getElementById("g-hospedajes");
     if (!el) return;
     limpiar(el);
@@ -161,9 +182,13 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
             Confirmación: ${esc(h.claveReservacion || "-")}
           </span>
         </div>
-        <button class="texto" data-id="${esc(id)}">Quitar</button>
+        <div class="fila-botones" style="margin:0;">
+          <button class="texto" data-accion="editar">Editar</button>
+          <button class="texto" data-accion="quitar">Quitar</button>
+        </div>
       `;
-      fila.querySelector("button").addEventListener("click", async () => {
+      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioHospedaje(id));
+      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
         if (confirm("¿Quitar este hospedaje?")) await eliminar(refHospedajes.child(id));
       });
       el.appendChild(fila);
@@ -214,16 +239,18 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     }
   });
 
-  document.getElementById("g-btn-ciudad").addEventListener("click", () => {
+  // --- Ciudad: agregar o editar (idExistente indica modo edición) ---
+  function abrirFormularioCiudad(idExistente) {
+    const existente = idExistente ? ciudadesCache[idExistente] : null;
     const { modal, cerrar } = abrirModal(`
-      <h3>Agregar ciudad</h3>
+      <h3>${existente ? "Editar ciudad" : "Agregar ciudad"}</h3>
       <form id="form-ciudad">
         <label for="fc-nombre">Nombre</label>
-        <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus>
+        <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus value="${esc(existente ? existente.nombre : "")}">
         <label for="fc-zona">Zona horaria</label>
-        <select id="fc-zona" required>${opcionesZonaHoraria(zonaHorariaSugerida())}</select>
+        <select id="fc-zona" required>${opcionesZonaHoraria(existente ? existente.zonaHoraria : zonaHorariaSugerida())}</select>
         <div class="fila-botones">
-          <button type="submit">Agregar</button>
+          <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
         </div>
       </form>
@@ -234,14 +261,27 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       const nombre = modal.querySelector("#fc-nombre").value.trim();
       const zonaHoraria = modal.querySelector("#fc-zona").value;
       if (!nombre || !zonaHoraria) return;
-      await agregar(refCiudades, { nombre, zonaHoraria, orden: Object.keys(ciudadesCache).length });
+      if (existente) {
+        await actualizar(refCiudades.child(idExistente), { nombre, zonaHoraria });
+      } else {
+        await agregar(refCiudades, { nombre, zonaHoraria, orden: Object.keys(ciudadesCache).length });
+      }
       cerrar();
     });
-  });
+  }
+  document.getElementById("g-btn-ciudad").addEventListener("click", () => abrirFormularioCiudad(null));
 
-  document.getElementById("g-btn-traslado").addEventListener("click", () => {
+  // --- Traslado: agregar o editar ---
+  function abrirFormularioTraslado(idExistente) {
+    const existente = idExistente ? trasladosCache[idExistente] : null;
+    const zona = infoCache.zonaOrigen || "America/Mexico_City";
+    const valInicioFecha = existente ? existente.inicioUTC.slice(0, 10) : "";
+    const valInicioHora = existente ? formatoHora(existente.inicioUTC, zona) : "09:00";
+    const valFinFecha = existente && existente.finUTC ? fechaISO(existente.finUTC, existente.zonaDestino || zona) : "";
+    const valFinHora = existente && existente.finUTC ? formatoHora(existente.finUTC, existente.zonaDestino || zona) : "12:00";
+
     const { modal, cerrar } = abrirModal(`
-      <h3>Agregar traslado</h3>
+      <h3>${existente ? "Editar traslado" : "Agregar traslado"}</h3>
       <form id="form-traslado">
         <label for="ft-tipo">Tipo</label>
         <select id="ft-tipo" required>
@@ -251,27 +291,28 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
           <option value="auto">Auto</option>
         </select>
         <label for="ft-origen">Origen</label>
-        <input id="ft-origen" type="text" placeholder="Ej. CDMX" required autofocus>
+        <input id="ft-origen" type="text" placeholder="Ej. CDMX" required autofocus value="${esc(existente ? existente.origen : "")}">
         <label for="ft-destino">Destino</label>
-        <input id="ft-destino" type="text" placeholder="Ej. Nueva York" required>
+        <input id="ft-destino" type="text" placeholder="Ej. Nueva York" required value="${esc(existente ? existente.destino : "")}">
         <label for="ft-fecha">Fecha de salida</label>
-        <input id="ft-fecha" type="date" required>
+        <input id="ft-fecha" type="date" required value="${esc(valInicioFecha)}"${limitesFecha()}>
         <label for="ft-hora">Hora de salida (zona de origen)</label>
-        <input id="ft-hora" type="time" value="09:00" required>
+        <input id="ft-hora" type="time" value="${esc(valInicioHora)}" required>
         <label for="ft-fecha-llegada">Fecha de llegada</label>
-        <input id="ft-fecha-llegada" type="date" required>
+        <input id="ft-fecha-llegada" type="date" required value="${esc(valFinFecha)}"${limitesFecha()}>
         <label for="ft-hora-llegada">Hora de llegada (zona de destino)</label>
-        <input id="ft-hora-llegada" type="time" value="12:00" required>
+        <input id="ft-hora-llegada" type="time" value="${esc(valFinHora)}" required>
         <label for="ft-zona-destino">Zona horaria de destino</label>
-        <select id="ft-zona-destino" required>${opcionesZonaHoraria(zonaHorariaSugerida())}</select>
+        <select id="ft-zona-destino" required>${opcionesZonaHoraria(existente ? (existente.zonaDestino || zona) : zonaHorariaSugerida())}</select>
         <label for="ft-confirmacion">Clave/número de confirmación</label>
-        <input id="ft-confirmacion" type="text" placeholder="Opcional">
+        <input id="ft-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.confirmacion || "") : "")}">
         <div class="fila-botones">
-          <button type="submit">Agregar</button>
+          <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="ft-cancelar">Cancelar</button>
         </div>
       </form>
     `);
+    if (existente) modal.querySelector("#ft-tipo").value = existente.tipo;
     modal.querySelector("#ft-cancelar").addEventListener("click", cerrar);
     // La fecha de llegada por default es la misma que la de salida; el usuario la
     // cambia solo si el traslado cruza la medianoche.
@@ -291,27 +332,33 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       const zonaDestino = modal.querySelector("#ft-zona-destino").value;
       const confirmacion = modal.querySelector("#ft-confirmacion").value.trim();
       if (!origen || !destino || !fecha || !hora || !horaLlegada || !zonaDestino) return;
-      const inicioUTC = localAUTC(fecha, hora, infoCache.zonaOrigen || "America/Mexico_City");
+      const inicioUTC = localAUTC(fecha, hora, zona);
       const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaDestino);
-      await agregar(refTraslados, { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion });
+      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion };
+      if (existente) await actualizar(refTraslados.child(idExistente), datos);
+      else await agregar(refTraslados, datos);
       cerrar();
     });
-  });
+  }
+  document.getElementById("g-btn-traslado").addEventListener("click", () => abrirFormularioTraslado(null));
 
-  document.getElementById("g-btn-hospedaje").addEventListener("click", () => {
+  // --- Hospedaje: agregar o editar ---
+  function abrirFormularioHospedaje(idExistente) {
+    const existente = idExistente ? hospedajesCache[idExistente] : null;
+    const zona = infoCache.zonaOrigen || "America/Mexico_City";
     const { modal, cerrar } = abrirModal(`
-      <h3>Agregar hospedaje</h3>
+      <h3>${existente ? "Editar hospedaje" : "Agregar hospedaje"}</h3>
       <form id="form-hospedaje">
         <label for="fh-nombre">Nombre</label>
-        <input id="fh-nombre" type="text" placeholder="Ej. Hotel Plaza" required autofocus>
+        <input id="fh-nombre" type="text" placeholder="Ej. Hotel Plaza" required autofocus value="${esc(existente ? existente.nombre : "")}">
         <label for="fh-fecha">Fecha de check-in</label>
-        <input id="fh-fecha" type="date" required>
+        <input id="fh-fecha" type="date" required value="${esc(existente ? existente.checkinUTC.slice(0, 10) : "")}"${limitesFecha()}>
         <label for="fh-noches">Número de noches</label>
-        <input id="fh-noches" type="number" min="1" step="1" value="1" required>
+        <input id="fh-noches" type="number" min="1" step="1" value="${esc(existente ? (existente.noches || 1) : 1)}" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>
-        <input id="fh-confirmacion" type="text" placeholder="Opcional">
+        <input id="fh-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.claveReservacion || "") : "")}">
         <div class="fila-botones">
-          <button type="submit">Agregar</button>
+          <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fh-cancelar">Cancelar</button>
         </div>
       </form>
@@ -324,13 +371,15 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       const noches = Number(modal.querySelector("#fh-noches").value) || 1;
       const claveReservacion = modal.querySelector("#fh-confirmacion").value.trim();
       if (!nombre || !fecha) return;
-      const zona = infoCache.zonaOrigen || "America/Mexico_City";
       const checkinUTC = localAUTC(fecha, "15:00", zona);
       const checkoutUTC = localAUTC(sumarDias(fecha, noches), "11:00", zona);
-      await agregar(refHospedajes, { nombre, checkinUTC, checkoutUTC, noches, claveReservacion });
+      const datos = { nombre, checkinUTC, checkoutUTC, noches, claveReservacion };
+      if (existente) await actualizar(refHospedajes.child(idExistente), datos);
+      else await agregar(refHospedajes, datos);
       cerrar();
     });
-  });
+  }
+  document.getElementById("g-btn-hospedaje").addEventListener("click", () => abrirFormularioHospedaje(null));
 
   const cancelarInfo = escuchar(refInfo, renderInfo);
   const cancelarCiudades = escuchar(refCiudades, renderCiudades);

@@ -96,6 +96,22 @@ input, select, textarea {
 
 textarea { resize: vertical; min-height: 60px; border-radius: 18px; }
 
+/* Checkboxes/radios NO deben heredar el estilo de pill de ancho 100% —
+   por eso se veían como una barra en blanco sin marca. */
+input[type="checkbox"], input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: var(--color-primario);
+  -webkit-appearance: auto;
+  appearance: auto;
+  cursor: pointer;
+}
+input[type="radio"] { border-radius: 50%; }
+
 /* Flecha propia para <select>, ya que appearance:none quita la nativa. */
 select {
   background-image:

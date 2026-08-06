@@ -31,7 +31,7 @@ viajes/{tripId}:
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
   traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion }
   hospedajes/{hospedajeId}: { nombre, checkinUTC, checkoutUTC, noches, claveReservacion }
-  checklist/{itemId}: { nombre, porPersona: { userId: bool } }
+  checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden }
   participantes/{userId}: { rol: "admin" | "participante", nombre }
 ```
 
@@ -49,6 +49,15 @@ vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos con
   texto libre cuando el valor debe ser válido (p.ej. zona horaria: `opcionesZonaHoraria()`
   usa `Intl.supportedValuesOf("timeZone")`). `confirm()` nativo sigue siendo aceptable solo
   para confirmar una acción destructiva (borrar), no para capturar datos.
+- **Agregar y editar comparten el mismo formulario.** El patrón es
+  `abrirFormularioX(idExistente)`: si `idExistente` es `null` crea (título/botón "Agregar",
+  `agregar()`); si trae un id, precarga los `value=` desde el cache local y usa
+  `actualizar()` en vez de `agregar()`. No dupliques el HTML del formulario entre el botón
+  "+ Agregar" y el botón "Editar" de cada fila — ambos deben llamar a la misma función.
+- **`input[type="checkbox"|"radio"]` no debe llevar el estilo de pill genérico.** El
+  selector `input, select, textarea` en `estilos.css` es solo para campos de texto; los
+  checkboxes tienen su propia regla (18px, `appearance: auto`) — si un checkbox se ve como
+  una barra en blanco sin marca, es porque volvió a caer bajo esa regla genérica.
 - **Todo texto dinámico al DOM pasa por `esc()`** (`js/render-utils.js`) antes de insertarse
   vía `innerHTML`. Sin excepciones — es la única defensa anti-XSS del proyecto.
 - **Fechas/horas se guardan siempre en UTC** (ISO 8601, sufijo `Z`) en Firebase. La

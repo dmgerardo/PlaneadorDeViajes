@@ -40,6 +40,15 @@ function formatoDuracion(ms) {
   return `${h} h ${m} min`;
 }
 
+// Fecha en formato AAAA-MM-DD (para prellenar <input type="date">), en una zona dada.
+function fechaISO(isoUTC, zonaHoraria) {
+  if (!isoUTC) return "";
+  const fecha = new Date(isoUTC);
+  const partes = new Intl.DateTimeFormat("en-CA", { timeZone: zonaHoraria, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(fecha);
+  const obj = {}; partes.forEach(p => obj[p.type] = p.value);
+  return `${obj.year}-${obj.month}-${obj.day}`;
+}
+
 function formatoFecha(isoUTC, zonaHoraria) {
   if (!isoUTC) return "";
   const fecha = new Date(isoUTC);

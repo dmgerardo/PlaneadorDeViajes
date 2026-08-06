@@ -1,6 +1,10 @@
 // Vista "Calendario": cuadrícula días x horas con doble zona horaria,
-// bloques flotantes (lugares) arrastrables/redimensionables y fijado,
-// más traslados/hospedajes ya pactados como bloques fijos.
+// bloques flotantes (lugares) arrastrables/redimensionables (incluso entre
+// días) y fijado, traslados/hospedajes como bloques fijos, un timeline para
+// asignar la ciudad de cada día, y prevención de traslapes.
+//
+// La misma función sirve para la vista "Calendario" (todos los días) y para
+// "Agenda" (un solo día con navegación prev/next) — ver opciones.modoAgenda.
 
 const HORA_PX = 44;
 const COLORES_CIUDAD = ["--color-ciudad-1", "--color-ciudad-2", "--color-ciudad-3", "--color-ciudad-4", "--color-ciudad-5", "--color-ciudad-6"];
@@ -21,9 +25,17 @@ function listaDeDias(fechaInicio, fechaFin) {
   return dias;
 }
 
-// Determina, para cada día, la ciudad en la que se está (y si ese día hay
-// traslado, la ciudad destino), a partir de los traslados ya capturados.
-function calcularCiudadPorDia(dias, traslados, ciudades, zonaOrigen) {
+function sumarDiasStr(fechaStr, delta) {
+  const fecha = new Date(`${fechaStr}T00:00:00Z`);
+  fecha.setUTCDate(fecha.getUTCDate() + delta);
+  return fecha.toISOString().slice(0, 10);
+}
+
+// Determina, para cada día, la ciudad en la que se está. Prioriza la
+// asignación explícita del timeline (ciudadPorDia); si un día no tiene
+// ciudad asignada ahí, recurre a la heurística previa basada en traslados
+// (para no romper viajes que aún no usan el timeline).
+function calcularCiudadPorDia(dias, ciudadPorDiaManual, ciudades, traslados, zonaOrigen) {
   const ordenados = Object.values(traslados).slice().sort((a, b) => a.inicioUTC.localeCompare(b.inicioUTC));
   const listaCiudades = Object.values(ciudades);
   const buscarTZ = nombre => {
@@ -33,7 +45,7 @@ function calcularCiudadPorDia(dias, traslados, ciudades, zonaOrigen) {
 
   let ciudadActual = null;
   let tzActual = zonaOrigen;
-  const resultado = {};
+  const heuristico = {};
   let idxTraslado = 0;
 
   dias.forEach(dia => {
@@ -45,16 +57,43 @@ function calcularCiudadPorDia(dias, traslados, ciudades, zonaOrigen) {
       tzActual = buscarTZ(t.destino);
       idxTraslado++;
     }
-    resultado[dia] = { etiqueta: cambioHoy ? `${cambioHoy.origen} → ${cambioHoy.destino}` : (ciudadActual || "—"), zonaHoraria: tzActual };
+    heuristico[dia] = { etiqueta: cambioHoy ? `${cambioHoy.origen} → ${cambioHoy.destino}` : (ciudadActual || "—"), zonaHoraria: tzActual, ciudadId: null };
+  });
+
+  const resultado = {};
+  dias.forEach(dia => {
+    const ciudadId = ciudadPorDiaManual[dia];
+    if (ciudadId && ciudades[ciudadId]) {
+      resultado[dia] = { etiqueta: ciudades[ciudadId].nombre, zonaHoraria: ciudades[ciudadId].zonaHoraria, ciudadId };
+    } else {
+      resultado[dia] = heuristico[dia];
+    }
   });
   return resultado;
 }
 
-async function montarVistaCalendario(contenedor, tripId, sesion) {
+async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) {
+  const modoAgenda = !!opciones.modoAgenda;
   document.documentElement.style.setProperty("--hora-px", `${HORA_PX}px`);
 
   contenedor.innerHTML = `
     <div class="cal-wrap">
+      ${modoAgenda ? `
+        <div class="cal-agenda-nav">
+          <button class="secundario" id="ag-prev">← Anterior</button>
+          <div id="ag-fecha-actual" class="cal-agenda-fecha"></div>
+          <button class="secundario" id="ag-next">Siguiente →</button>
+        </div>
+      ` : `
+        <div class="tarjeta" id="cal-ciudades-tarjeta">
+          <h3 style="margin-bottom:4px;">Ciudades por día</h3>
+          <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
+            Toca una ciudad y arrastra sobre los días para asignarla (o "🧹 Vaciar" para quitarla).
+          </p>
+          <div class="ciudad-timeline" id="ciudad-timeline"></div>
+          <div class="cal-pendientes" id="cal-ciudades-chips"></div>
+        </div>
+      `}
       <div class="cal-scroll">
         <div class="cal-grid" id="cal-grid"></div>
       </div>
@@ -74,9 +113,14 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
   const refItinerario = refNodo(tripId, "itinerario");
   const refTraslados = refNodo(tripId, "traslados");
   const refHospedajes = refNodo(tripId, "hospedajes");
+  const refCiudadPorDia = refNodo(tripId, "ciudadPorDia");
 
-  const estado = { info: {}, ciudades: {}, lugares: {}, itinerario: {}, traslados: {}, hospedajes: {} };
+  const estado = { info: {}, ciudades: {}, lugares: {}, itinerario: {}, traslados: {}, hospedajes: {}, ciudadPorDiaManual: {} };
   let lugarSeleccionado = null;
+  let ciudadSeleccionadaTimeline = null;
+  let pintando = false;
+  let scrollInicialHecho = false;
+  let diaAgendaActual = null;
 
   function colorParaCiudad(ciudadId) {
     const ids = Object.keys(estado.ciudades);
@@ -92,24 +136,128 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     return Number(obj.hour) + Number(obj.minute) / 60;
   }
 
-  function fechaLocal(isoUTC, zonaHoraria) {
-    const fecha = new Date(isoUTC);
-    const partes = new Intl.DateTimeFormat("en-CA", { timeZone: zonaHoraria, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(fecha);
-    const obj = {}; partes.forEach(p => obj[p.type] = p.value);
-    return `${obj.year}-${obj.month}-${obj.day}`;
+  // ¿Se traslapa [inicioDecimal, finDecimal) con algún otro bloque de itinerario
+  // ese mismo día (en la zona horaria local del día)?
+  function hayTraslape(dia, idExcluir, inicioDecimal, finDecimal, zonaHoraria) {
+    return Object.entries(estado.itinerario).some(([id, b]) => {
+      if (id === idExcluir) return false;
+      if (fechaISO(b.inicioUTC, zonaHoraria) !== dia) return false;
+      const bInicio = horaLocalDecimal(b.inicioUTC, zonaHoraria);
+      let bFin = horaLocalDecimal(b.finUTC, zonaHoraria);
+      if (bFin <= bInicio) bFin = 24;
+      return inicioDecimal < bFin && finDecimal > bInicio;
+    });
   }
+
+  function asegurarDiaAgendaPorDefecto() {
+    if (!modoAgenda || diaAgendaActual || !estado.info.fechaInicio || !estado.info.fechaFin) return;
+    const hoy = fechaISO(new Date().toISOString(), estado.info.zonaOrigen || "America/Mexico_City");
+    if (hoy < estado.info.fechaInicio) diaAgendaActual = estado.info.fechaInicio;
+    else if (hoy > estado.info.fechaFin) diaAgendaActual = estado.info.fechaFin;
+    else diaAgendaActual = hoy;
+  }
+
+  // --- Timeline de ciudades por día (solo en modo cuadrícula completa) ---
+  function renderTimeline() {
+    const wrap = document.getElementById("ciudad-timeline");
+    const chipsEl = document.getElementById("cal-ciudades-chips");
+    if (!wrap || !chipsEl) return;
+    const dias = listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
+    limpiar(wrap);
+    dias.forEach(dia => {
+      const ciudadId = estado.ciudadPorDiaManual[dia];
+      const celda = document.createElement("div");
+      celda.className = "ct-dia";
+      celda.dataset.dia = dia;
+      const fechaCorta = new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+      if (ciudadId && estado.ciudades[ciudadId]) {
+        celda.style.background = colorParaCiudad(ciudadId);
+        celda.style.color = "#fff2eb";
+        celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span><span class="ct-ciudad">${esc(estado.ciudades[ciudadId].nombre)}</span>`;
+      } else {
+        celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span>`;
+      }
+      celda.addEventListener("pointerdown", () => iniciarPintura(dia));
+      celda.addEventListener("pointerenter", () => continuarPintura(dia));
+      wrap.appendChild(celda);
+    });
+
+    limpiar(chipsEl);
+    Object.entries(estado.ciudades).forEach(([id, c]) => {
+      const chip = document.createElement("div");
+      const activo = ciudadSeleccionadaTimeline === id;
+      chip.className = "cal-chip-pendiente" + (activo ? " seleccionado" : "");
+      if (activo) chip.style.background = colorParaCiudad(id);
+      chip.style.borderColor = colorParaCiudad(id);
+      chip.textContent = c.nombre;
+      chip.addEventListener("click", () => {
+        ciudadSeleccionadaTimeline = ciudadSeleccionadaTimeline === id ? null : id;
+        renderTimeline();
+      });
+      chipsEl.appendChild(chip);
+    });
+    const chipBorrar = document.createElement("div");
+    const borrarActivo = ciudadSeleccionadaTimeline === "__borrar__";
+    chipBorrar.className = "cal-chip-pendiente" + (borrarActivo ? " seleccionado" : "");
+    chipBorrar.textContent = "🧹 Vaciar";
+    chipBorrar.addEventListener("click", () => {
+      ciudadSeleccionadaTimeline = borrarActivo ? null : "__borrar__";
+      renderTimeline();
+    });
+    chipsEl.appendChild(chipBorrar);
+  }
+
+  let cambiosPintura = {};
+  function iniciarPintura(dia) {
+    if (!ciudadSeleccionadaTimeline) return;
+    pintando = true;
+    cambiosPintura = {};
+    aplicarPintura(dia);
+  }
+  function continuarPintura(dia) {
+    if (!pintando) return;
+    aplicarPintura(dia);
+  }
+  function aplicarPintura(dia) {
+    const valor = ciudadSeleccionadaTimeline === "__borrar__" ? null : ciudadSeleccionadaTimeline;
+    cambiosPintura[dia] = valor;
+    estado.ciudadPorDiaManual = { ...estado.ciudadPorDiaManual, [dia]: valor };
+    renderTimeline();
+  }
+  async function finalizarPintura() {
+    if (!pintando) return;
+    pintando = false;
+    const mapa = {};
+    Object.entries(cambiosPintura).forEach(([dia, valor]) => {
+      mapa[`viajes/${tripId}/ciudadPorDia/${dia}`] = valor;
+    });
+    cambiosPintura = {};
+    if (Object.keys(mapa).length) await actualizarMultiple(mapa);
+  }
+  document.addEventListener("pointerup", finalizarPintura);
 
   function render() {
     const grid = document.getElementById("cal-grid");
     const pendientesEl = document.getElementById("cal-pendientes");
     if (!grid || !pendientesEl) return;
 
-    const dias = listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
-    const ciudadPorDia = calcularCiudadPorDia(dias, estado.traslados, estado.ciudades, estado.info.zonaOrigen || "America/Mexico_City");
+    if (!modoAgenda) renderTimeline();
+    asegurarDiaAgendaPorDefecto();
+
+    const dias = modoAgenda ? (diaAgendaActual ? [diaAgendaActual] : []) : listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
+    const ciudadPorDia = calcularCiudadPorDia(dias, estado.ciudadPorDiaManual, estado.ciudades, estado.traslados, estado.info.zonaOrigen || "America/Mexico_City");
+
+    if (modoAgenda) {
+      const encabezado = document.getElementById("ag-fecha-actual");
+      if (encabezado && diaAgendaActual) {
+        const infoDia = ciudadPorDia[diaAgendaActual] || { etiqueta: "—" };
+        const fechaLarga = new Date(`${diaAgendaActual}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", day: "2-digit", month: "long", timeZone: "UTC" });
+        encabezado.innerHTML = `${esc(fechaLarga)}<br><span style="font-size:12px;color:var(--color-texto-suave);font-family:var(--font-body);">${esc(infoDia.etiqueta)}</span>`;
+      }
+    }
 
     limpiar(grid);
 
-    // Columna de horas (zona de origen)
     const colHoras = document.createElement("div");
     colHoras.className = "cal-col-horas";
     colHoras.innerHTML = `<div class="cal-header">Hora<br>${esc((estado.info.zonaOrigen || "").split("/").pop() || "")}</div>` +
@@ -119,12 +267,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     dias.forEach(dia => {
       const infoDia = ciudadPorDia[dia] || { etiqueta: "—", zonaHoraria: estado.info.zonaOrigen };
       const col = document.createElement("div");
-      col.className = "cal-dia";
+      col.className = modoAgenda ? "cal-dia cal-dia-agenda" : "cal-dia";
       col.innerHTML = `
+        ${modoAgenda ? "" : `
         <div class="cal-dia-header">
           <span class="fecha">${esc(new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", timeZone: "UTC" }))}</span>
           <span class="ciudad">${esc(infoDia.etiqueta)}</span>
-        </div>
+        </div>`}
         <div class="cal-area" style="height:${24 * HORA_PX}px;" data-dia="${esc(dia)}" data-tz="${esc(infoDia.zonaHoraria)}"></div>
       `;
       const area = col.querySelector(".cal-area");
@@ -132,10 +281,19 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
       area.addEventListener("click", async e => {
         if (e.target !== area) return;
         if (!lugarSeleccionado) return;
-        const rect = area.getBoundingClientRect();
-        const horaClick = Math.max(0, Math.min(23, Math.floor((e.clientY - rect.top) / HORA_PX)));
         const lugar = estado.lugares[lugarSeleccionado];
         if (!lugar) return;
+        if (infoDia.ciudadId && infoDia.ciudadId !== lugar.ciudadId) {
+          const nombreCiudadLugar = estado.ciudades[lugar.ciudadId] ? estado.ciudades[lugar.ciudadId].nombre : "otra ciudad";
+          alert(`Este día está asignado a "${infoDia.etiqueta}", pero "${lugar.nombre}" es de ${nombreCiudadLugar}. Asigna primero ese día a la ciudad correcta en el timeline.`);
+          return;
+        }
+        const rect = area.getBoundingClientRect();
+        const horaClick = Math.max(0, Math.min(23, Math.floor((e.clientY - rect.top) / HORA_PX)));
+        if (hayTraslape(dia, null, horaClick, horaClick + 1, infoDia.zonaHoraria)) {
+          alert("Ya hay algo agendado en ese horario. Elige otra hora.");
+          return;
+        }
         const inicioISO = localAUTC(dia, `${String(horaClick).padStart(2, "0")}:00`, infoDia.zonaHoraria);
         const finISO = new Date(new Date(inicioISO).getTime() + 3600000).toISOString();
         await agregar(refItinerario, {
@@ -148,8 +306,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
 
       // Bloques de itinerario (lugares) para este día, según su hora local.
       Object.entries(estado.itinerario)
-        .filter(([, b]) => fechaLocal(b.inicioUTC, infoDia.zonaHoraria) === dia)
-        .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria));
+        .filter(([, b]) => fechaISO(b.inicioUTC, infoDia.zonaHoraria) === dia)
+        .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria, ciudadPorDia));
 
       // Traslados fijos que caen ese día (según hora de origen); usan su duración real
       // (fin de trayecto) si ya se capturó, o 1h como referencia si es un traslado viejo.
@@ -176,6 +334,18 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     });
 
     renderPendientes();
+
+    // Auto-scroll a la columna de hoy, solo una vez por montaje de la vista.
+    if (!scrollInicialHecho && !modoAgenda) {
+      const hoyStr = fechaISO(new Date().toISOString(), estado.info.zonaOrigen || "America/Mexico_City");
+      if (dias.includes(hoyStr)) {
+        const areaHoy = grid.querySelector(`.cal-area[data-dia="${hoyStr}"]`);
+        const columnaHoy = areaHoy ? areaHoy.closest(".cal-dia") : null;
+        const scrollEl = contenedor.querySelector(".cal-scroll");
+        if (columnaHoy && scrollEl) scrollEl.scrollLeft = Math.max(0, columnaHoy.offsetLeft - 56);
+        scrollInicialHecho = true;
+      }
+    }
   }
 
   function pintarBloqueFijo(area, titulo, inicioUTC, finUTC, zonaHoraria, colorVar) {
@@ -193,7 +363,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     area.appendChild(div);
   }
 
-  function pintarBloqueLugar(area, id, bloque, zonaHoraria) {
+  function pintarBloqueLugar(area, id, bloque, zonaHoraria, ciudadPorDia) {
     const lugar = estado.lugares[bloque.refId];
     if (!lugar) return;
     const inicio = horaLocalDecimal(bloque.inicioUTC, zonaHoraria);
@@ -223,37 +393,66 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     });
 
     if (!bloque.fijado) {
-      habilitarArrastre(div, area, id, bloque, zonaHoraria);
+      habilitarArrastre(div, area, id, bloque, zonaHoraria, ciudadPorDia);
       habilitarRedimension(div.querySelector(".resize"), area, id, bloque, zonaHoraria);
     }
 
     area.appendChild(div);
   }
 
-  function habilitarArrastre(div, area, id, bloque, zonaHoraria) {
+  // Arrastre vertical (cambia hora) y, si el puntero cruza a la columna de
+  // otro día cuya ciudad coincide con la del lugar, también cambia de día.
+  function habilitarArrastre(div, areaInicial, id, bloque, zonaHorariaInicial, ciudadPorDia) {
     let arrastrando = false, offsetY = 0, nuevoTop = 0;
+    let areaActual = areaInicial;
+    let zonaActual = zonaHorariaInicial;
+
     div.addEventListener("pointerdown", e => {
       if (e.target.closest(".resize") || e.target.closest("[data-accion]")) return;
       arrastrando = true;
+      areaActual = areaInicial;
+      zonaActual = zonaHorariaInicial;
       offsetY = e.clientY - div.getBoundingClientRect().top;
       div.setPointerCapture(e.pointerId);
+      div.style.zIndex = "10";
     });
     div.addEventListener("pointermove", e => {
       if (!arrastrando) return;
-      const rectArea = area.getBoundingClientRect();
+      const lugar = estado.lugares[bloque.refId];
+      div.style.visibility = "hidden";
+      const elDebajo = document.elementFromPoint(e.clientX, e.clientY);
+      div.style.visibility = "";
+      const nuevaArea = elDebajo ? elDebajo.closest(".cal-area") : null;
+      if (nuevaArea && nuevaArea !== areaActual && lugar) {
+        const diaCandidato = nuevaArea.dataset.dia;
+        const infoCandidato = ciudadPorDia[diaCandidato];
+        const puedeMover = !infoCandidato || !infoCandidato.ciudadId || infoCandidato.ciudadId === lugar.ciudadId;
+        if (puedeMover) {
+          areaActual = nuevaArea;
+          zonaActual = nuevaArea.dataset.tz;
+          areaActual.appendChild(div);
+        }
+      }
+      const rectArea = areaActual.getBoundingClientRect();
       nuevoTop = Math.max(0, Math.min(23.5 * HORA_PX, e.clientY - rectArea.top - offsetY));
       nuevoTop = Math.round(nuevoTop / (HORA_PX / 4)) * (HORA_PX / 4); // snap a 15 min
       div.style.top = `${nuevoTop}px`;
     });
-    div.addEventListener("pointerup", async e => {
+    div.addEventListener("pointerup", async () => {
       if (!arrastrando) return;
       arrastrando = false;
+      div.style.zIndex = "";
+      const dia = areaActual.dataset.dia;
       const nuevaHoraDecimal = nuevoTop / HORA_PX;
       const duracionHoras = (new Date(bloque.finUTC) - new Date(bloque.inicioUTC)) / 3600000;
-      const dia = area.dataset.dia;
+      if (hayTraslape(dia, id, nuevaHoraDecimal, nuevaHoraDecimal + duracionHoras, zonaActual)) {
+        alert("Ya hay algo agendado en ese horario. Se regresó a su posición anterior.");
+        solicitarRender();
+        return;
+      }
       const hh = Math.floor(nuevaHoraDecimal);
       const mm = Math.round((nuevaHoraDecimal - hh) * 60);
-      const nuevoInicio = localAUTC(dia, `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`, zonaHoraria);
+      const nuevoInicio = localAUTC(dia, `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`, zonaActual);
       const nuevoFin = new Date(new Date(nuevoInicio).getTime() + duracionHoras * 3600000).toISOString();
       await actualizar(refItinerario.child(id), { inicioUTC: nuevoInicio, finUTC: nuevoFin });
     });
@@ -275,11 +474,17 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
       nuevaAltura = Math.max(HORA_PX / 4, Math.round(nuevaAltura / (HORA_PX / 4)) * (HORA_PX / 4));
       div.style.height = `${nuevaAltura}px`;
     });
-    handle.addEventListener("pointerup", async e => {
+    handle.addEventListener("pointerup", async () => {
       if (!redimensionando) return;
       redimensionando = false;
       const div = handle.parentElement;
       const duracionHoras = parseFloat(div.style.height) / HORA_PX;
+      const inicioDecimal = parseFloat(div.style.top) / HORA_PX;
+      if (hayTraslape(area.dataset.dia, id, inicioDecimal, inicioDecimal + duracionHoras, zonaHoraria)) {
+        alert("Ese tamaño se traslaparía con otro elemento. Se regresó a su duración anterior.");
+        solicitarRender();
+        return;
+      }
       const nuevoFin = new Date(new Date(bloque.inicioUTC).getTime() + duracionHoras * 3600000).toISOString();
       await actualizar(refItinerario.child(id), { finUTC: nuevoFin });
     });
@@ -290,12 +495,20 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
     if (!el) return;
     limpiar(el);
     const idsAgendados = new Set(Object.values(estado.itinerario).map(b => b.refId));
-    const pendientes = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
-    if (pendientes.length === 0) {
-      el.innerHTML = '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>';
+    const ciudadesConDia = new Set(Object.values(estado.ciudadPorDiaManual).filter(Boolean));
+    const todosPendientes = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
+    // Si ya se empezó a usar el timeline, solo ofrecemos lugares cuya ciudad
+    // tenga al menos un día asignado — así no se agenda algo donde no toca.
+    const listos = todosPendientes.filter(([, l]) => ciudadesConDia.size === 0 || ciudadesConDia.has(l.ciudadId));
+    const esperando = todosPendientes.length - listos.length;
+
+    if (listos.length === 0) {
+      el.innerHTML = todosPendientes.length === 0
+        ? '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>'
+        : '<p style="font-size:12px;color:var(--color-texto-suave)">Asigna ciudades a los días en el timeline de arriba para poder agendar tus lugares.</p>';
       return;
     }
-    pendientes.forEach(([id, l]) => {
+    listos.forEach(([id, l]) => {
       const chip = document.createElement("div");
       chip.className = "cal-chip-pendiente" + (lugarSeleccionado === id ? " seleccionado" : "");
       chip.textContent = `${l.aireLibre ? "❄️ " : ""}${l.nombre}`;
@@ -304,6 +517,41 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
         renderPendientes();
       });
       el.appendChild(chip);
+    });
+    if (esperando > 0) {
+      const nota = document.createElement("p");
+      nota.style.cssText = "font-size:11px;color:var(--color-texto-suave);width:100%;margin:4px 0 0;";
+      nota.textContent = `${esperando} más esperando a que asignes su ciudad en el timeline.`;
+      el.appendChild(nota);
+    }
+  }
+
+  if (modoAgenda) {
+    document.getElementById("ag-prev").addEventListener("click", () => {
+      if (!diaAgendaActual) return;
+      diaAgendaActual = sumarDiasStr(diaAgendaActual, -1);
+      solicitarRender();
+    });
+    document.getElementById("ag-next").addEventListener("click", () => {
+      if (!diaAgendaActual) return;
+      diaAgendaActual = sumarDiasStr(diaAgendaActual, 1);
+      solicitarRender();
+    });
+    // Deslizar a la izquierda/derecha sobre el área del día para navegar.
+    const scrollEl = contenedor.querySelector(".cal-scroll");
+    let inicioX = null, inicioY = null;
+    scrollEl.addEventListener("pointerdown", e => {
+      if (e.target.closest(".cal-bloque")) { inicioX = null; return; }
+      inicioX = e.clientX; inicioY = e.clientY;
+    });
+    scrollEl.addEventListener("pointerup", e => {
+      if (inicioX === null) return;
+      const dx = e.clientX - inicioX;
+      const dy = e.clientY - inicioY;
+      inicioX = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        document.getElementById(dx < 0 ? "ag-next" : "ag-prev").click();
+      }
     });
   }
 
@@ -314,9 +562,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
   const cancelarItinerario = escuchar(refItinerario, v => { estado.itinerario = v; solicitarRender(); });
   const cancelarTraslados = escuchar(refTraslados, v => { estado.traslados = v; solicitarRender(); });
   const cancelarHospedajes = escuchar(refHospedajes, v => { estado.hospedajes = v; solicitarRender(); });
+  const cancelarCiudadPorDia = escuchar(refCiudadPorDia, v => { estado.ciudadPorDiaManual = v; solicitarRender(); });
 
   return () => {
+    document.removeEventListener("pointerup", finalizarPintura);
     cancelarInfo(); cancelarCiudades(); cancelarLugares();
-    cancelarItinerario(); cancelarTraslados(); cancelarHospedajes();
+    cancelarItinerario(); cancelarTraslados(); cancelarHospedajes(); cancelarCiudadPorDia();
   };
 }

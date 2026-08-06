@@ -7,12 +7,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Viaje — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=10">
+<link rel="stylesheet" href="css/estilos.css?v=11">
 </head>
 <body>
   <div class="tabs">
     <button class="texto" id="btn-volver" style="flex:0 0 auto;">← Viajes</button>
-    <button data-vista="generales" class="activo">Generales</button>
+    <button data-vista="agenda">Agenda</button>
+    <button data-vista="generales">Generales</button>
     <button data-vista="lugares">Lugares</button>
     <button data-vista="calendario">Calendario</button>
     <button data-vista="checklist">Checklist</button>
@@ -26,15 +27,15 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/version.js?v=10"></script>
-  <script src="js/firebase-config.js?v=10"></script>
-  <script src="js/render-utils.js?v=10"></script>
-  <script src="js/db.js?v=10"></script>
-  <script src="js/auth.js?v=10"></script>
-  <script src="js/vista-generales.js?v=10"></script>
-  <script src="js/vista-lugares.js?v=10"></script>
-  <script src="js/vista-calendario.js?v=10"></script>
-  <script src="js/vista-checklist.js?v=10"></script>
+  <script src="js/version.js?v=11"></script>
+  <script src="js/firebase-config.js?v=11"></script>
+  <script src="js/render-utils.js?v=11"></script>
+  <script src="js/db.js?v=11"></script>
+  <script src="js/auth.js?v=11"></script>
+  <script src="js/vista-generales.js?v=11"></script>
+  <script src="js/vista-lugares.js?v=11"></script>
+  <script src="js/vista-calendario.js?v=11"></script>
+  <script src="js/vista-checklist.js?v=11"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const tripId = params.get("trip");
@@ -47,9 +48,10 @@
     });
 
     const vistas = {
+      agenda: (c, t, s) => montarVistaCalendario(c, t, s, { modoAgenda: true }),
       generales: montarVistaGenerales,
       lugares: montarVistaLugares,
-      calendario: montarVistaCalendario,
+      calendario: (c, t, s) => montarVistaCalendario(c, t, s, { modoAgenda: false }),
       checklist: montarVistaChecklist
     };
 
@@ -70,7 +72,20 @@
       if (!tripId) { window.location.href = "index.html"; return; }
       sesionActual = await requerirSesion();
       if (!sesionActual) return;
-      await cambiarVista("generales");
+
+      // Si hoy cae dentro de las fechas del viaje, arrancamos en Agenda
+      // (referencia rápida del día); si no, en Generales como siempre.
+      let vistaInicial = "generales";
+      try {
+        const snap = await db.ref(`viajes/${tripId}/info`).get();
+        const info = snap.val();
+        if (info && info.fechaInicio && info.fechaFin) {
+          const hoy = fechaISO(new Date().toISOString(), info.zonaOrigen || "America/Mexico_City");
+          if (hoy >= info.fechaInicio && hoy <= info.fechaFin) vistaInicial = "agenda";
+        }
+      } catch (e) { /* si falla la lectura, cae al default "generales" */ }
+
+      await cambiarVista(vistaInicial);
     })();
   </script>
 </body>

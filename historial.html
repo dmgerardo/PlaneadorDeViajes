@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=10">
+<link rel="stylesheet" href="css/estilos.css?v=11">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,19 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v11 — Timeline de ciudades, agenda diaria y mejoras a la cuadrícula</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>Nuevo timeline en Calendario: toca una ciudad y arrastra sobre los días para asignarla (o "🧹 Vaciar" para quitarla). Reemplaza a la heurística automática cuando ya la usaste.</li>
+        <li>Los lugares pendientes ahora solo se ofrecen para agendar si su ciudad ya tiene algún día asignado, y no se puede agendar uno en el día de otra ciudad.</li>
+        <li>Se evitan traslapes: si un horario ya está ocupado, se avisa y no se guarda.</li>
+        <li>Los bloques de lugares ya se pueden arrastrar a otro día (si ese día es de su misma ciudad), y el redimensionado por tacto en iPhone ya funciona (era un problema de <code>touch-action</code>).</li>
+        <li>La cuadrícula hace scroll automático a la columna de hoy si el viaje está en curso, y en pantallas anchas las columnas de los días se ensanchan para ver más de un vistazo.</li>
+        <li>Nueva pestaña "Agenda": un solo día con navegación anterior/siguiente (con swipe) — aparece primera y activa por defecto si hoy cae dentro de las fechas del viaje.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v10 — Edición, checklist mejorado y fix de checkboxes</h3>
@@ -95,6 +108,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=10"></script>
+  <script src="js/version.js?v=11"></script>
 </body>
 </html>

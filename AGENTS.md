@@ -29,6 +29,7 @@ viajes/{tripId}:
   ciudades/{cityId}: { nombre, zonaHoraria, orden }
   lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
+  ciudadPorDia/{fecha}: ciudadId  // asignación explícita del timeline; fecha = "AAAA-MM-DD"
   traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion }
   hospedajes/{hospedajeId}: { nombre, checkinUTC, checkoutUTC, noches, claveReservacion }
   checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden }

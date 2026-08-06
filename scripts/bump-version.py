@@ -11,7 +11,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 HTML_FILES = ["index.html", "viaje.html", "historial.html"]
-VERSION_JS = RAIZ / "js" / "version.js"
+VERSION_JS = RAIZ / "js" / "app-version.js"
 PATRON_VERSION = re.compile(r"(\?v=)(\d+)")
 PATRON_APP_VERSION = re.compile(r'(APP_VERSION\s*=\s*")(\d+)(")')
 

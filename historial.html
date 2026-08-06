@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=18">
+<link rel="stylesheet" href="css/estilos.css?v=19">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +16,16 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v19 — Modo oscuro y modo offline de lectura</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Modo oscuro:</strong> la app ahora sigue el tema claro/oscuro del sistema operativo del celular, en vez de quedarse siempre en claro.</li>
+        <li><strong>Modo offline de lectura:</strong> Agenda/Calendario, Checklist, Logística y Lugares (y en general cualquier pantalla) muestran la última versión guardada aunque no haya señal — útil parado en la calle o en el metro. Sin conexión aparece un aviso arriba de la pantalla; los datos se pueden ver pero no editar sin señal.</li>
+        <li>La app ahora se puede abrir sin conexión en absoluto (antes ni siquiera cargaba la pantalla sin internet).</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v18 — Reestructura de navegación, checklist con categorías y varios fixes de UX</h3>
@@ -181,6 +193,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=18"></script>
+  <script src="js/app-version.js?v=19"></script>
+  <script src="js/version.js?v=19"></script>
 </body>
 </html>

@@ -7,10 +7,14 @@
   --color-fondo: #f5ead8;
   --color-superficie: #ebddc5;
   --color-texto: #201e1d;
-  --color-texto-suave: color-mix(in srgb, #201e1d 58%, transparent);
-  --color-borde: color-mix(in srgb, #201e1d 16%, transparent);
+  --color-texto-suave: color-mix(in srgb, var(--color-texto) 58%, transparent);
+  --color-borde: color-mix(in srgb, var(--color-texto) 16%, transparent);
   --color-primario: #c67139;
   --color-primario-oscuro: #8c491a;
+  /* Texto sobre fondo --color-primario (botones, tabs/segmentados activos):
+     fijo y NO deriva de --color-fondo — en modo oscuro --color-fondo se
+     invierte y un texto que lo siguiera perdería contraste sobre el naranja. */
+  --color-sobre-primario: #201e1d;
   --color-peligro: #a8402c;
   --color-exito: #728157;
 
@@ -34,9 +38,22 @@
   --espacio: 12px;
 }
 
-/* La propuesta visual "Organic" es un tema claro único (no define tokens
-   oscuros), así que la app se mantiene siempre en modo claro para verse
-   igual a la maqueta — sin cambiar automáticamente con el tema del sistema. */
+/* La propuesta visual "Organic" es un tema claro único de origen, pero la
+   app sigue el modo claro/oscuro del sistema operativo (petición explícita
+   de la persona de 17 años del análisis de UX — pantalla beige a full
+   brillo de noche en el metro). Solo se invierten fondo/superficie/texto;
+   los colores de acento (naranja, colores de ciudad, traslado/hospedaje)
+   se mantienen iguales en ambos temas — ya funcionan sobre superficie clara
+   u oscura sin perder legibilidad. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fondo: #1c1815;
+    --color-superficie: #262019;
+    --color-texto: #f2e9dc;
+    --color-primario-oscuro: #e0955c;
+    --sombra: 0 3px 10px rgba(0, 0, 0, 0.5);
+  }
+}
 
 * { box-sizing: border-box; }
 
@@ -134,7 +151,7 @@ button {
   font-family: var(--font-heading);
   font-weight: 400;
   background: var(--color-primario);
-  color: var(--color-fondo);
+  color: var(--color-sobre-primario);
 }
 button:hover { background: var(--color-primario-oscuro); }
 button.secundario { background: transparent; color: var(--color-primario); border: 1px solid var(--color-primario); }
@@ -194,7 +211,7 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   font-size: 13px;
   padding: 8px 10px;
 }
-.segmentado button.activo { background: var(--color-primario); color: var(--color-fondo); border-color: var(--color-primario); }
+.segmentado button.activo { background: var(--color-primario); color: var(--color-sobre-primario); border-color: var(--color-primario); }
 
 /* Switch de grupo (En el viaje / Planeación), en la misma barra sticky que
    los tabs — ver #nav-viaje en viaje.html. */
@@ -208,7 +225,7 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   font-size: 12.5px;
   padding: 6px 10px;
 }
-.grupo-switch button.activo { background: var(--color-primario); color: var(--color-fondo); border-color: var(--color-primario); }
+.grupo-switch button.activo { background: var(--color-primario); color: var(--color-sobre-primario); border-color: var(--color-primario); }
 
 /* Confirmación visual breve de "guardado" tras cada escritura a Firebase. */
 #toast {
@@ -229,6 +246,18 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   text-align: center;
 }
 #toast.mostrar { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Aviso de "sin conexión" — ver actualizarBannerConexion() en render-utils.js. */
+#banner-sin-conexion {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 300;
+  background: var(--color-peligro);
+  color: #fff2eb;
+  text-align: center;
+  font-size: 12.5px;
+  padding: 6px 10px;
+}
 
 /* Modal genérico */
 .modal-fondo {
@@ -316,7 +345,7 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-bloque.cat-no_negociable { border-color: #fff2eb; border-width: 3px; }
 .cal-pendientes { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; }
 .cal-chip-pendiente { flex: 0 0 auto; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--color-borde); background: var(--color-fondo); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-.cal-chip-pendiente.seleccionado { background: var(--color-primario); color: var(--color-fondo); border-color: var(--color-primario); }
+.cal-chip-pendiente.seleccionado { background: var(--color-primario); color: var(--color-sobre-primario); border-color: var(--color-primario); }
 
 /* Pantallas anchas (PC o celular horizontal): las columnas de días crecen
    para aprovechar el espacio y mostrar más días sin tener que hacer scroll. */

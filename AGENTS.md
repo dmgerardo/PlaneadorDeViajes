@@ -115,6 +115,20 @@ porque no hay backend propio ni dirección de correo capturada.
   `formatoHora()` / `formatoFecha()` (`render-utils.js`). Para ir de "fecha+hora local" a
   UTC al guardar, usa `localAUTC()` — no construyas el ISO a mano sumando/restando horas,
   los offsets de DST varían por zona y fecha.
+- **Modo offline de solo lectura**: `escuchar()` (`db.js`) guarda en `localStorage` la
+  última copia de cada nodo que llegó de Firebase (clave = `ref.toString()`, la URL
+  completa del nodo) y, al montar una vista, pinta esa copia de inmediato si existe —
+  así no hay que esperar a Firebase para ver algo. Cuando Firebase sí entrega datos
+  frescos, se repinta y se actualiza la copia. **No** cachea escrituras offline (sigue
+  siendo solo lectura); `actualizarBannerConexion()` (`render-utils.js`) solo avisa que
+  no hay señal, no bloquea los formularios. Además, `sw.js` (service worker, registrado
+  desde `js/version.js`) cachea el "app shell" (HTML/CSS/JS/manifest + SDK de Firebase)
+  para que la app abra sin conexión — sin esto, el navegador ni siquiera podría cargar
+  `viaje.html` sin red aunque los datos ya estén en `localStorage`.
+- **`js/app-version.js` es la única fuente de `APP_VERSION`** (separado de
+  `js/version.js`, que sí usa `document`/`window`) porque `sw.js` también necesita ese
+  valor vía `importScripts()`, y un service worker no tiene acceso al DOM.
+  `scripts/bump-version.py` edita `js/app-version.js`, no `js/version.js`.
 - **Toda escritura a Firebase pasa por `agregar()`/`actualizar()`/`eliminar()`/
   `actualizarMultiple()` de `db.js`**, nunca `ref.set()`/`ref.update()` directo desde una
   vista — esos helpers disparan `mostrarToast()` (`render-utils.js`) para dar confirmación

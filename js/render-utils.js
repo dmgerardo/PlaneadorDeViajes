@@ -151,6 +151,30 @@ function abrirModalCambiarContrasena(sesion) {
   });
 }
 
+// Aviso de "sin conexión": banner fijo arriba de la pantalla cuando el
+// navegador detecta que no hay red. No bloquea los formularios (si se
+// intenta guardar algo sin señal, Firebase reintenta solo al reconectar) —
+// solo avisa para que quede claro que lo que se ve es la última copia
+// guardada (ver escuchar() en db.js), no algo desactualizado por error.
+function actualizarBannerConexion() {
+  let banner = document.getElementById("banner-sin-conexion");
+  if (!navigator.onLine) {
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "banner-sin-conexion";
+      banner.textContent = "📶 Sin conexión — viendo la última versión guardada";
+      document.body.prepend(banner);
+      document.body.style.paddingTop = `${banner.offsetHeight}px`;
+    }
+  } else if (banner) {
+    banner.remove();
+    document.body.style.paddingTop = "";
+  }
+}
+window.addEventListener("online", actualizarBannerConexion);
+window.addEventListener("offline", actualizarBannerConexion);
+document.addEventListener("DOMContentLoaded", actualizarBannerConexion);
+
 // Lista de zonas horarias IANA soportadas por el navegador, para usarse en <select>
 // en vez de que el usuario tenga que escribir el nombre exacto a mano.
 const ZONAS_HORARIAS = (typeof Intl.supportedValuesOf === "function")

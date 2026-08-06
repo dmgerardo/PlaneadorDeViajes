@@ -279,7 +279,11 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-agenda-nav {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   margin-bottom: var(--espacio);
+  position: sticky; z-index: 15;
+  background: var(--color-fondo);
+  padding: 6px 0;
 }
+.cal-agenda-nav button:disabled { opacity: 0.35; cursor: default; }
 .cal-agenda-fecha {
   flex: 1; text-align: center; font-family: var(--font-heading); font-size: 16px;
   text-transform: capitalize;

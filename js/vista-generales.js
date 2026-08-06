@@ -64,6 +64,25 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     return min + max;
   }
 
+  // Ciudades disponibles para elegir como origen/destino de un traslado:
+  // la ciudad de origen del viaje + todas las ciudades capturadas. Si el
+  // valor actual (al editar) ya no está en ninguna de las dos, se conserva
+  // como opción extra para no perder el dato.
+  function nombresCiudadesTraslado(valorActual) {
+    const nombres = [];
+    if (infoCache.ciudadOrigen) nombres.push(infoCache.ciudadOrigen);
+    Object.values(ciudadesCache).forEach(c => { if (!nombres.includes(c.nombre)) nombres.push(c.nombre); });
+    if (valorActual && !nombres.includes(valorActual)) nombres.push(valorActual);
+    return nombres;
+  }
+  function opcionesCiudadesTraslado(valorActual) {
+    const nombres = nombresCiudadesTraslado(valorActual);
+    if (nombres.length === 0) return '<option value="">Agrega la ciudad de origen o alguna ciudad primero</option>';
+    return nombres.map(n =>
+      `<option value="${esc(n)}"${n === valorActual ? " selected" : ""}>${esc(n)}${n === infoCache.ciudadOrigen ? " (origen)" : ""}</option>`
+    ).join("");
+  }
+
   const renderInfo = programarRender(info => {
     infoCache = info;
     const el = document.getElementById("g-info");
@@ -74,6 +93,8 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       <input id="g-fecha-inicio" type="date" value="${esc(info.fechaInicio || "")}">
       <label>Fecha fin</label>
       <input id="g-fecha-fin" type="date" value="${esc(info.fechaFin || "")}" min="${esc(info.fechaInicio || "")}">
+      <label>Ciudad de origen</label>
+      <input id="g-ciudad-origen" type="text" placeholder="Ej. CDMX" value="${esc(info.ciudadOrigen || "")}">
       <label>Zona horaria de origen</label>
       <select id="g-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
       <label>Clave de invitación</label>
@@ -92,6 +113,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       refInfo.update(actualizacion);
     });
     document.getElementById("g-fecha-fin").addEventListener("change", e => refInfo.update({ fechaFin: e.target.value }));
+    document.getElementById("g-ciudad-origen").addEventListener("change", e => refInfo.update({ ciudadOrigen: e.target.value.trim() }));
     document.getElementById("g-zona-origen").addEventListener("change", e => refInfo.update({ zonaOrigen: e.target.value }));
   });
 
@@ -291,9 +313,9 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
           <option value="auto">Auto</option>
         </select>
         <label for="ft-origen">Origen</label>
-        <input id="ft-origen" type="text" placeholder="Ej. CDMX" required autofocus value="${esc(existente ? existente.origen : "")}">
+        <select id="ft-origen" required autofocus>${opcionesCiudadesTraslado(existente ? existente.origen : infoCache.ciudadOrigen || "")}</select>
         <label for="ft-destino">Destino</label>
-        <input id="ft-destino" type="text" placeholder="Ej. Nueva York" required value="${esc(existente ? existente.destino : "")}">
+        <select id="ft-destino" required>${opcionesCiudadesTraslado(existente ? existente.destino : "")}</select>
         <label for="ft-fecha">Fecha de salida</label>
         <input id="ft-fecha" type="date" required value="${esc(valInicioFecha)}"${limitesFecha()}>
         <label for="ft-hora">Hora de salida (zona de origen)</label>
@@ -340,7 +362,13 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       cerrar();
     });
   }
-  document.getElementById("g-btn-traslado").addEventListener("click", () => abrirFormularioTraslado(null));
+  document.getElementById("g-btn-traslado").addEventListener("click", () => {
+    if (nombresCiudadesTraslado(null).length === 0) {
+      alert("Primero captura la ciudad de origen (arriba) o agrega al menos una ciudad.");
+      return;
+    }
+    abrirFormularioTraslado(null);
+  });
 
   // --- Hospedaje: agregar o editar ---
   function abrirFormularioHospedaje(idExistente) {

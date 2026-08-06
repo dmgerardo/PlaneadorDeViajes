@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=13">
+<link rel="stylesheet" href="css/estilos.css?v=14">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,17 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v14 — Límites en Agenda, ciudad de origen y doble horario</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>Agenda ya no deja navegar antes de la fecha de inicio ni después de la fecha de fin del viaje.</li>
+        <li>En Agenda, el encabezado (día, ciudad y flechas anterior/siguiente) se queda fijo debajo de las pestañas al hacer scroll.</li>
+        <li>Nuevo campo "Ciudad de origen" en Generales; los traslados ahora eligen origen y destino de una lista (esa ciudad + las capturadas), en vez de escribirlos a mano.</li>
+        <li>Calendario y Agenda ya muestran la hora local y la de origen en cada bloque cuando son distintas (antes solo aparecía una y con una etiqueta engañosa).</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v13 — Pestaña Ciudades separada + iconos del bloque</h3>
@@ -126,6 +137,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=13"></script>
+  <script src="js/version.js?v=14"></script>
 </body>
 </html>

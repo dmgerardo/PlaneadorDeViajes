@@ -164,13 +164,20 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         const fechaLarga = new Date(`${diaAgendaActual}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "long", day: "2-digit", month: "long", timeZone: "UTC" });
         encabezado.innerHTML = `${esc(fechaLarga)}<br><span style="font-size:12px;color:var(--color-texto-suave);font-family:var(--font-body);">${esc(infoDia.etiqueta)}</span>`;
       }
+      // No dejar navegar fuera del rango de fechas del viaje.
+      const btnPrev = document.getElementById("ag-prev");
+      const btnNext = document.getElementById("ag-next");
+      if (btnPrev) btnPrev.disabled = !diaAgendaActual || !estado.info.fechaInicio || diaAgendaActual <= estado.info.fechaInicio;
+      if (btnNext) btnNext.disabled = !diaAgendaActual || !estado.info.fechaFin || diaAgendaActual >= estado.info.fechaFin;
     }
 
     limpiar(grid);
 
+    // El eje de horas siempre es la hora LOCAL del día (cada columna puede tener
+    // una ciudad/zona distinta) — el horario de origen se muestra por bloque.
     const colHoras = document.createElement("div");
     colHoras.className = "cal-col-horas";
-    colHoras.innerHTML = `<div class="cal-header">Hora<br>${esc((estado.info.zonaOrigen || "").split("/").pop() || "")}</div>` +
+    colHoras.innerHTML = `<div class="cal-header">Hora<br>local</div>` +
       Array.from({ length: 24 }, (_, h) => `<div class="cal-hora-fila">${String(h).padStart(2, "0")}:00</div>`).join("");
     grid.appendChild(colHoras);
 
@@ -269,7 +276,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     div.style.top = `${inicio * HORA_PX}px`;
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorCss(colorVar);
-    div.innerHTML = `<div class="titulo">🔒 ${esc(titulo)}</div>`;
+    const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
+    const horaOrigenTxt = zonaOrigen !== zonaHoraria
+      ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(inicioUTC, zonaHoraria)} local · ${formatoHora(inicioUTC, zonaOrigen)} origen</div>`
+      : "";
+    div.innerHTML = `<div class="titulo">🔒 ${esc(titulo)}</div>${horaOrigenTxt}`;
     area.appendChild(div);
   }
 
@@ -283,11 +294,16 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     div.style.top = `${inicio * HORA_PX}px`;
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorParaCiudad(lugar.ciudadId);
+    const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
+    const horaOrigenTxt = zonaOrigen !== zonaHoraria
+      ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} origen</div>`
+      : "";
     div.innerHTML = `
       <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? "🔒" : "📌"}</span>
       <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">✕</span>
       <div class="titulo">${lugar.aireLibre ? "❄️ " : ""}${esc(lugar.nombre)}</div>
-      <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)}</div>
+      <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} local</div>
+      ${horaOrigenTxt}
       ${bloque.fijado ? "" : '<div class="resize"></div>'}
     `;
 
@@ -445,14 +461,23 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   if (modoAgenda) {
     document.getElementById("ag-prev").addEventListener("click", () => {
       if (!diaAgendaActual) return;
-      diaAgendaActual = sumarDiasStr(diaAgendaActual, -1);
+      const anterior = sumarDiasStr(diaAgendaActual, -1);
+      if (estado.info.fechaInicio && anterior < estado.info.fechaInicio) return;
+      diaAgendaActual = anterior;
       solicitarRender();
     });
     document.getElementById("ag-next").addEventListener("click", () => {
       if (!diaAgendaActual) return;
-      diaAgendaActual = sumarDiasStr(diaAgendaActual, 1);
+      const siguiente = sumarDiasStr(diaAgendaActual, 1);
+      if (estado.info.fechaFin && siguiente > estado.info.fechaFin) return;
+      diaAgendaActual = siguiente;
       solicitarRender();
     });
+    // Deja pegado el encabezado (día, ciudad y flechas) justo debajo de las
+    // pestañas al hacer scroll hacia abajo.
+    const tabsEl = document.querySelector(".tabs");
+    const navEl = contenedor.querySelector(".cal-agenda-nav");
+    if (tabsEl && navEl) navEl.style.top = `${tabsEl.getBoundingClientRect().height}px`;
     // Deslizar a la izquierda/derecha sobre el área del día para navegar.
     const scrollEl = contenedor.querySelector(".cal-scroll");
     let inicioX = null, inicioY = null;

@@ -29,7 +29,10 @@ usuarios/{userId}: { nombre, passwordHash, viajesInvitado: { tripId: true } }
 identidades/{claveNombre}: userId
 
 viajes/{tripId}:
-  info: { nombre, fechaInicio, fechaFin, zonaOrigen, claveInvitacion }
+  info: { nombre, fechaInicio, fechaFin, zonaOrigen, ciudadOrigen, claveInvitacion }
+  // ciudadOrigen: nombre libre de la ciudad donde empieza/termina el viaje (no es un
+  // id de "ciudades" — es solo texto). Aparece como opción "(origen)" al elegir
+  // origen/destino de un traslado, junto con los nombres de "ciudades".
   ciudades/{cityId}: { nombre, zonaHoraria, orden }
   lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }

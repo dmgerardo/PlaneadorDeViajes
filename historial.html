@@ -22,6 +22,23 @@
     <h1>Historial de cambios</h1>
 
     <div class="tarjeta">
+      <h3>v22 — Tocar la fila abre edición directo</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>En Ciudades, Traslados/Hospedajes (Logística) y Lugares se quitó el botón "Editar" de cada fila — era redundante, ahora tocar la fila completa abre el formulario de edición.</li>
+        <li>El botón "Eliminar" se movió adentro de ese formulario (al final), en vez de vivir aparte en la fila de la lista.</li>
+      </ul>
+    </div>
+
+    <div class="tarjeta">
+      <h3>v21 — Corrige versión desincronizada entre pantallas</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Corregido:</strong> el service worker a veces mostraba una versión vieja de una pantalla mientras otra ya tenía la versión nueva. Ahora el HTML siempre revisa primero si hay señal (y solo usa la copia guardada si no la hay).</li>
+      </ul>
+    </div>
+
+    <div class="tarjeta">
       <h3>v20 — Ícono de la app</h3>
       <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
       <ul>

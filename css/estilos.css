@@ -34,17 +34,9 @@
   --espacio: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-fondo: #2e2b25;
-    --color-superficie: #474238;
-    --color-texto: #f9f4ed;
-    --color-texto-suave: color-mix(in srgb, #f9f4ed 62%, transparent);
-    --color-borde: color-mix(in srgb, #f9f4ed 18%, transparent);
-    --color-primario: #f6a06b;
-    --color-primario-oscuro: #ffc6a5;
-  }
-}
+/* La propuesta visual "Organic" es un tema claro único (no define tokens
+   oscuros), así que la app se mantiene siempre en modo claro para verse
+   igual a la maqueta — sin cambiar automáticamente con el tema del sistema. */
 
 * { box-sizing: border-box; }
 

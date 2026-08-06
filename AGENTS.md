@@ -29,8 +29,8 @@ viajes/{tripId}:
   ciudades/{cityId}: { nombre, zonaHoraria, orden }
   lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
-  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, confirmacion }
-  hospedajes/{hospedajeId}: { nombre, checkinUTC, claveReservacion }
+  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion }
+  hospedajes/{hospedajeId}: { nombre, checkinUTC, checkoutUTC, noches, claveReservacion }
   checklist/{itemId}: { nombre, porPersona: { userId: bool } }
   participantes/{userId}: { rol: "admin" | "participante", nombre }
 ```

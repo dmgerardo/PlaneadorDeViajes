@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=8">
+<link rel="stylesheet" href="css/estilos.css?v=9">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,17 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v9 — Duración de traslados, noches de hospedaje y ajustes de UI</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>Al agregar una ciudad, la zona horaria propuesta ahora es la de la última ciudad agregada, no siempre la de origen.</li>
+        <li>Los traslados capturan zona horaria de destino y hora de llegada; se calcula y muestra la duración real, incluyendo en la cuadrícula.</li>
+        <li>Los hospedajes capturan número de noches y calculan el check-out, mostrado también en la cuadrícula.</li>
+        <li>Se corrigieron campos de formulario que se desbordaban de su tarjeta en móvil.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v8 — Tema claro fijo, como la propuesta visual</h3>
@@ -72,6 +83,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=8"></script>
+  <script src="js/version.js?v=9"></script>
 </body>
 </html>

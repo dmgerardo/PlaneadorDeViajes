@@ -44,6 +44,16 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     return fecha.toISOString().slice(0, 10);
   }
 
+  // Zona horaria de la última ciudad agregada (o la de origen si no hay ninguna) —
+  // se usa como default al agregar la siguiente ciudad/traslado, para no tener que
+  // buscarla de nuevo en la lista de 400+ zonas cada vez.
+  function zonaHorariaSugerida() {
+    const ciudades = Object.values(ciudadesCache);
+    if (ciudades.length === 0) return infoCache.zonaOrigen || "America/Mexico_City";
+    const ultima = ciudades.sort((a, b) => (b.orden || 0) - (a.orden || 0))[0];
+    return ultima.zonaHoraria;
+  }
+
   const renderInfo = programarRender(info => {
     infoCache = info;
     const el = document.getElementById("g-info");
@@ -108,13 +118,15 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       return;
     }
     entradas.forEach(([id, t]) => {
+      const duracion = t.finUTC ? formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC)) : "";
       const fila = document.createElement("div");
       fila.className = "lista-item";
       fila.innerHTML = `
         <div>
           <strong>${esc(t.tipo)} — ${esc(t.origen)} → ${esc(t.destino)}</strong><br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
-            ${esc(formatoFecha(t.inicioUTC, "UTC"))} ${esc(formatoHora(t.inicioUTC, "UTC"))} UTC ·
+            ${esc(formatoFecha(t.inicioUTC, "UTC"))} ${esc(formatoHora(t.inicioUTC, "UTC"))} UTC
+            ${duracion ? ` · Duración: ${esc(duracion)}` : ""} ·
             Confirmación: ${esc(t.confirmacion || "-")}
           </span>
         </div>
@@ -143,7 +155,10 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <div>
           <strong>${esc(h.nombre)}</strong><br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
-            Check-in: ${esc(formatoFecha(h.checkinUTC, "UTC"))} · Confirmación: ${esc(h.claveReservacion || "-")}
+            Check-in: ${esc(formatoFecha(h.checkinUTC, "UTC"))}
+            ${h.checkoutUTC ? ` · Check-out: ${esc(formatoFecha(h.checkoutUTC, "UTC"))}` : ""}
+            ${h.noches ? ` · ${h.noches} noche${h.noches > 1 ? "s" : ""}` : ""} ·
+            Confirmación: ${esc(h.claveReservacion || "-")}
           </span>
         </div>
         <button class="texto" data-id="${esc(id)}">Quitar</button>
@@ -206,7 +221,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <label for="fc-nombre">Nombre</label>
         <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus>
         <label for="fc-zona">Zona horaria</label>
-        <select id="fc-zona" required>${opcionesZonaHoraria(infoCache.zonaOrigen || "America/Mexico_City")}</select>
+        <select id="fc-zona" required>${opcionesZonaHoraria(zonaHorariaSugerida())}</select>
         <div class="fila-botones">
           <button type="submit">Agregar</button>
           <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
@@ -241,8 +256,14 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <input id="ft-destino" type="text" placeholder="Ej. Nueva York" required>
         <label for="ft-fecha">Fecha de salida</label>
         <input id="ft-fecha" type="date" required>
-        <label for="ft-hora">Hora de salida (hora de origen)</label>
+        <label for="ft-hora">Hora de salida (zona de origen)</label>
         <input id="ft-hora" type="time" value="09:00" required>
+        <label for="ft-fecha-llegada">Fecha de llegada</label>
+        <input id="ft-fecha-llegada" type="date" required>
+        <label for="ft-hora-llegada">Hora de llegada (zona de destino)</label>
+        <input id="ft-hora-llegada" type="time" value="12:00" required>
+        <label for="ft-zona-destino">Zona horaria de destino</label>
+        <select id="ft-zona-destino" required>${opcionesZonaHoraria(zonaHorariaSugerida())}</select>
         <label for="ft-confirmacion">Clave/número de confirmación</label>
         <input id="ft-confirmacion" type="text" placeholder="Opcional">
         <div class="fila-botones">
@@ -252,6 +273,12 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       </form>
     `);
     modal.querySelector("#ft-cancelar").addEventListener("click", cerrar);
+    // La fecha de llegada por default es la misma que la de salida; el usuario la
+    // cambia solo si el traslado cruza la medianoche.
+    modal.querySelector("#ft-fecha").addEventListener("change", e => {
+      const fechaLlegada = modal.querySelector("#ft-fecha-llegada");
+      if (!fechaLlegada.value) fechaLlegada.value = e.target.value;
+    });
     modal.querySelector("#form-traslado").addEventListener("submit", async e => {
       e.preventDefault();
       const tipo = modal.querySelector("#ft-tipo").value;
@@ -259,10 +286,14 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       const destino = modal.querySelector("#ft-destino").value.trim();
       const fecha = modal.querySelector("#ft-fecha").value;
       const hora = modal.querySelector("#ft-hora").value;
+      const fechaLlegada = modal.querySelector("#ft-fecha-llegada").value || fecha;
+      const horaLlegada = modal.querySelector("#ft-hora-llegada").value;
+      const zonaDestino = modal.querySelector("#ft-zona-destino").value;
       const confirmacion = modal.querySelector("#ft-confirmacion").value.trim();
-      if (!origen || !destino || !fecha || !hora) return;
+      if (!origen || !destino || !fecha || !hora || !horaLlegada || !zonaDestino) return;
       const inicioUTC = localAUTC(fecha, hora, infoCache.zonaOrigen || "America/Mexico_City");
-      await agregar(refTraslados, { tipo, origen, destino, inicioUTC, confirmacion });
+      const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaDestino);
+      await agregar(refTraslados, { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion });
       cerrar();
     });
   });
@@ -275,6 +306,8 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <input id="fh-nombre" type="text" placeholder="Ej. Hotel Plaza" required autofocus>
         <label for="fh-fecha">Fecha de check-in</label>
         <input id="fh-fecha" type="date" required>
+        <label for="fh-noches">Número de noches</label>
+        <input id="fh-noches" type="number" min="1" step="1" value="1" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>
         <input id="fh-confirmacion" type="text" placeholder="Opcional">
         <div class="fila-botones">
@@ -288,10 +321,13 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       e.preventDefault();
       const nombre = modal.querySelector("#fh-nombre").value.trim();
       const fecha = modal.querySelector("#fh-fecha").value;
+      const noches = Number(modal.querySelector("#fh-noches").value) || 1;
       const claveReservacion = modal.querySelector("#fh-confirmacion").value.trim();
       if (!nombre || !fecha) return;
-      const checkinUTC = localAUTC(fecha, "15:00", infoCache.zonaOrigen || "America/Mexico_City");
-      await agregar(refHospedajes, { nombre, checkinUTC, claveReservacion });
+      const zona = infoCache.zonaOrigen || "America/Mexico_City";
+      const checkinUTC = localAUTC(fecha, "15:00", zona);
+      const checkoutUTC = localAUTC(sumarDias(fecha, noches), "11:00", zona);
+      await agregar(refHospedajes, { nombre, checkinUTC, checkoutUTC, noches, claveReservacion });
       cerrar();
     });
   });

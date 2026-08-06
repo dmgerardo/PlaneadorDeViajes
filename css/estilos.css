@@ -61,6 +61,7 @@ body {
   box-shadow: var(--sombra);
   padding: var(--espacio);
   margin-bottom: var(--espacio);
+  overflow: hidden;
 }
 
 h1, h2, h3 {
@@ -78,7 +79,10 @@ label {
 }
 
 input, select, textarea {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 10px 14px;
   border: 1px solid var(--color-borde);
   border-radius: 999px;
@@ -86,9 +90,24 @@ input, select, textarea {
   color: var(--color-texto);
   font-size: 15px;
   font-family: var(--font-body);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 textarea { resize: vertical; min-height: 60px; border-radius: 18px; }
+
+/* Flecha propia para <select>, ya que appearance:none quita la nativa. */
+select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-texto-suave) 50%),
+    linear-gradient(135deg, var(--color-texto-suave) 50%, transparent 50%);
+  background-position:
+    calc(100% - 22px) calc(50% - 2px),
+    calc(100% - 17px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
 
 button {
   cursor: pointer;

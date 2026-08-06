@@ -29,6 +29,17 @@ function formatoHora(isoUTC, zonaHoraria) {
   }).format(fecha);
 }
 
+// Formatea una duración en milisegundos como "Xh Ym" para mostrar en traslados/hospedajes.
+function formatoDuracion(ms) {
+  if (!ms || ms <= 0) return "";
+  const totalMin = Math.round(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${m} min`;
+}
+
 function formatoFecha(isoUTC, zonaHoraria) {
   if (!isoUTC) return "";
   const fecha = new Date(isoUTC);

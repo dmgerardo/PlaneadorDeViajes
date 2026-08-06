@@ -151,15 +151,26 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
         .filter(([, b]) => fechaLocal(b.inicioUTC, infoDia.zonaHoraria) === dia)
         .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria));
 
-      // Traslados fijos que caen ese día (según hora de origen, mostrados como referencia).
+      // Traslados fijos que caen ese día (según hora de origen); usan su duración real
+      // (fin de trayecto) si ya se capturó, o 1h como referencia si es un traslado viejo.
       Object.entries(estado.traslados)
         .filter(([, t]) => t.inicioUTC.slice(0, 10) === dia)
-        .forEach(([id, t]) => pintarBloqueFijo(area, `✈️ ${t.tipo}: ${t.origen} → ${t.destino}`, t.inicioUTC, new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-traslado"));
+        .forEach(([id, t]) => {
+          const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
+          const duracion = t.finUTC ? ` (${formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC))})` : "";
+          pintarBloqueFijo(area, `✈️ ${t.tipo}: ${t.origen} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
+        });
 
-      // Hospedajes cuyo check-in cae ese día.
+      // Hospedajes: un bloque el día de check-in y otro el día de check-out.
       Object.entries(estado.hospedajes)
         .filter(([, h]) => h.checkinUTC && h.checkinUTC.slice(0, 10) === dia)
-        .forEach(([id, h]) => pintarBloqueFijo(area, `🏨 Check-in: ${h.nombre}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje"));
+        .forEach(([id, h]) => {
+          const noches = h.noches ? ` (${h.noches} noche${h.noches > 1 ? "s" : ""})` : "";
+          pintarBloqueFijo(area, `🏨 Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje");
+        });
+      Object.entries(estado.hospedajes)
+        .filter(([, h]) => h.checkoutUTC && h.checkoutUTC.slice(0, 10) === dia)
+        .forEach(([id, h]) => pintarBloqueFijo(area, `🏨 Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje"));
 
       grid.appendChild(col);
     });
@@ -169,7 +180,10 @@ async function montarVistaCalendario(contenedor, tripId, sesion) {
 
   function pintarBloqueFijo(area, titulo, inicioUTC, finUTC, zonaHoraria, colorVar) {
     const inicio = horaLocalDecimal(inicioUTC, zonaHoraria);
-    const fin = horaLocalDecimal(finUTC, zonaHoraria);
+    let fin = horaLocalDecimal(finUTC, zonaHoraria);
+    // Traslado nocturno o de varios días: recorta el bloque al final del día visible
+    // en vez de "envolverlo" incorrectamente al inicio del mismo día.
+    if (fin <= inicio) fin = 24;
     const div = document.createElement("div");
     div.className = "cal-bloque fijado";
     div.style.top = `${inicio * HORA_PX}px`;

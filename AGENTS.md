@@ -33,7 +33,11 @@ viajes/{tripId}:
   // ciudadOrigen: nombre libre de la ciudad donde empieza/termina el viaje (no es un
   // id de "ciudades" — es solo texto). Aparece como opción "(origen)" al elegir
   // origen/destino de un traslado, junto con los nombres de "ciudades".
-  ciudades/{cityId}: { nombre, zonaHoraria, orden }
+  ciudades/{cityId}: { nombre, zonaHoraria, orden, lat, lng }
+  // lat/lng son opcionales (null si no se capturaron) — se usan solo para calcular
+  // amanecer/atardecer real y sombrear la noche en Calendario/Agenda
+  // (vista-calendario.js: calcularSolUTC/calcularFranjaNoche). Sin coordenadas, esa
+  // vista usa un rango fijo de referencia 20:00–06:00.
   lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
   ciudadPorDia/{fecha}: ciudadId  // asignación explícita del timeline; fecha = "AAAA-MM-DD"

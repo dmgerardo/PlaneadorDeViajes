@@ -271,6 +271,12 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus value="${esc(existente ? existente.nombre : "")}">
         <label for="fc-zona">Zona horaria</label>
         <select id="fc-zona" required>${opcionesZonaHoraria(existente ? existente.zonaHoraria : zonaHorariaSugerida())}</select>
+        <label for="fc-lat">Coordenadas (opcional — para sombrear la noche real en el calendario)</label>
+        <div style="display:flex;gap:8px;">
+          <input id="fc-lat" type="number" step="any" min="-90" max="90" placeholder="Latitud" value="${esc(existente && existente.lat != null ? existente.lat : "")}">
+          <input id="fc-lng" type="number" step="any" min="-180" max="180" placeholder="Longitud" value="${esc(existente && existente.lng != null ? existente.lng : "")}">
+        </div>
+        <p style="font-size:11px;color:var(--color-texto-suave);margin:4px 0 0;">Búscalas en Google Maps: clic derecho sobre el mapa → el primer número es la latitud, el segundo la longitud.</p>
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
@@ -282,11 +288,18 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       e.preventDefault();
       const nombre = modal.querySelector("#fc-nombre").value.trim();
       const zonaHoraria = modal.querySelector("#fc-zona").value;
+      const latTxt = modal.querySelector("#fc-lat").value.trim();
+      const lngTxt = modal.querySelector("#fc-lng").value.trim();
       if (!nombre || !zonaHoraria) return;
+      const datos = { nombre, zonaHoraria };
+      // null (no undefined) para poder borrar coordenadas ya capturadas al editar.
+      datos.lat = latTxt ? Number(latTxt) : null;
+      datos.lng = lngTxt ? Number(lngTxt) : null;
       if (existente) {
-        await actualizar(refCiudades.child(idExistente), { nombre, zonaHoraria });
+        await actualizar(refCiudades.child(idExistente), datos);
       } else {
-        await agregar(refCiudades, { nombre, zonaHoraria, orden: Object.keys(ciudadesCache).length });
+        datos.orden = Object.keys(ciudadesCache).length;
+        await agregar(refCiudades, datos);
       }
       cerrar();
     });

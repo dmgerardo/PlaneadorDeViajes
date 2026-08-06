@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=15">
+<link rel="stylesheet" href="css/estilos.css?v=16">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v16 — Sombra de noche real en Calendario/Agenda</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>Nuevo campo opcional de coordenadas (latitud/longitud) al agregar/editar una ciudad.</li>
+        <li>Calendario y Agenda ahora oscurecen el fondo en horario nocturno, calculado con el amanecer/atardecer real de esa fecha y ciudad. Sin coordenadas capturadas, usa un rango fijo de referencia (20:00–06:00).</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v15 — Corrige desalineación de horas en Agenda</h3>
@@ -145,6 +154,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=15"></script>
+  <script src="js/version.js?v=16"></script>
 </body>
 </html>

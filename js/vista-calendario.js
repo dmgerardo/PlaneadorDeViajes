@@ -32,6 +32,73 @@ function sumarDiasStr(fechaStr, delta) {
   return fecha.toISOString().slice(0, 10);
 }
 
+// --- Amanecer/atardecer real (ecuación del amanecer) ---
+// Aproximación estándar (precisión de unos minutos), suficiente para sombrear
+// la cuadrícula — no para navegación. Referencia: "Sunrise equation" (NOAA).
+function gradARad(g) { return (g * Math.PI) / 180; }
+function radAGrad(r) { return (r * 180) / Math.PI; }
+
+// Devuelve { amanecerUTC, atardecerUTC } (Date) para esa fecha+lat/lng, o null
+// si el sol no sale o no se pone ese día (latitudes polares en verano/invierno).
+function calcularSolUTC(fechaStr, lat, lng) {
+  // El día Juliano de referencia se toma al mediodía UTC (convención de la
+  // ecuación del amanecer) — usar medianoche aquí desfasa amanecer/atardecer
+  // 12 horas (quedan invertidos entre sí).
+  const jd0 = new Date(`${fechaStr}T12:00:00Z`).getTime() / 86400000 + 2440587.5;
+  const n = jd0 - 2451545.0 + 0.0008;
+  const Jstar = n - lng / 360;
+  const M = ((357.5291 + 0.98560028 * Jstar) % 360 + 360) % 360;
+  const Mrad = gradARad(M);
+  const C = 1.9148 * Math.sin(Mrad) + 0.02 * Math.sin(2 * Mrad) + 0.0003 * Math.sin(3 * Mrad);
+  const lambda = ((M + 102.9372 + C + 180) % 360 + 360) % 360;
+  const lambdaRad = gradARad(lambda);
+  const Jtransit = 2451545.0 + Jstar + 0.0053 * Math.sin(Mrad) - 0.0069 * Math.sin(2 * lambdaRad);
+  const sinDelta = Math.sin(lambdaRad) * Math.sin(gradARad(23.44));
+  const delta = Math.asin(sinDelta);
+  const latRad = gradARad(lat);
+  const cosOmega = (Math.sin(gradARad(-0.83)) - Math.sin(latRad) * Math.sin(delta)) / (Math.cos(latRad) * Math.cos(delta));
+  if (cosOmega > 1 || cosOmega < -1) return null;
+  const omega0 = radAGrad(Math.acos(cosOmega));
+  const jdAJs = jd => new Date((jd - 2440587.5) * 86400000);
+  return {
+    amanecerUTC: jdAJs(Jtransit - omega0 / 360),
+    atardecerUTC: jdAJs(Jtransit + omega0 / 360)
+  };
+}
+
+// Franja horaria de "noche" (hora local decimal, 0-24) para sombrear un día.
+// Con coordenadas de la ciudad usa amanecer/atardecer real de esa fecha; si no
+// hay coordenadas, cae a un rango fijo de referencia (20:00–06:00).
+function calcularFranjaNoche(fechaStr, ciudad, zonaHoraria) {
+  if (ciudad && ciudad.lat != null && ciudad.lng != null) {
+    const sol = calcularSolUTC(fechaStr, ciudad.lat, ciudad.lng);
+    if (sol) {
+      const zona = zonaHoraria || "UTC";
+      const partesHora = (isoUTC) => {
+        const fecha = new Date(isoUTC);
+        const partes = new Intl.DateTimeFormat("en-US", { timeZone: zona, hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).formatToParts(fecha);
+        const obj = {}; partes.forEach(p => obj[p.type] = p.value);
+        return Number(obj.hour) + Number(obj.minute) / 60;
+      };
+      return { amanecer: partesHora(sol.amanecerUTC), atardecer: partesHora(sol.atardecerUTC) };
+    }
+  }
+  return { amanecer: 6, atardecer: 20 };
+}
+
+// Fondo CSS del área del día: líneas de hora + franja oscura en horario nocturno.
+function fondoConNoche(franja) {
+  const pct = h => `${((Math.max(0, Math.min(24, h)) / 24) * 100).toFixed(3)}%`;
+  const noche = "rgba(32,30,29,0.22)";
+  const dia = "rgba(32,30,29,0)";
+  const lineas = `repeating-linear-gradient(to bottom, var(--color-borde) 0, var(--color-borde) 1px, transparent 1px, transparent var(--hora-px, 44px))`;
+  const sombra = `linear-gradient(to bottom,
+    ${noche} 0%, ${noche} ${pct(franja.amanecer)},
+    ${dia} ${pct(franja.amanecer)}, ${dia} ${pct(franja.atardecer)},
+    ${noche} ${pct(franja.atardecer)}, ${noche} 100%)`;
+  return `${lineas}, ${sombra}`;
+}
+
 // Determina, para cada día, la ciudad en la que se está. Prioriza la
 // asignación explícita del timeline (ciudadPorDia); si un día no tiene
 // ciudad asignada ahí, recurre a la heurística previa basada en traslados
@@ -197,6 +264,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         <div class="cal-area" style="height:${24 * HORA_PX}px;" data-dia="${esc(dia)}" data-tz="${esc(infoDia.zonaHoraria)}"></div>
       `;
       const area = col.querySelector(".cal-area");
+      const ciudadDelDia = infoDia.ciudadId ? estado.ciudades[infoDia.ciudadId] : null;
+      area.style.backgroundImage = fondoConNoche(calcularFranjaNoche(dia, ciudadDelDia, infoDia.zonaHoraria));
 
       area.addEventListener("click", async e => {
         if (e.target !== area) return;

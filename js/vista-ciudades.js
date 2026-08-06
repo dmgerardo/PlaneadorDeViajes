@@ -55,7 +55,11 @@ async function montarVistaCiudades(contenedor, tripId, sesion) {
       <h3>${existente ? "Editar ciudad" : "Agregar ciudad"}</h3>
       <form id="form-ciudad">
         <label for="fc-nombre">Nombre</label>
-        <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus value="${esc(existente ? existente.nombre : "")}">
+        <div class="autocompletar-envoltura">
+          <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" autocomplete="off" required autofocus value="${esc(existente ? existente.nombre : "")}">
+          <div class="autocompletar-lista oculto" id="fc-sugerencias"></div>
+        </div>
+        <p style="font-size:11px;color:var(--color-texto-suave);margin:4px 0 0;">Escribe para buscar en el catálogo (rellena zona horaria y coordenadas solo), o captúrala manual abajo.</p>
         <label for="fc-zona">Zona horaria</label>
         <select id="fc-zona" required>${opcionesZonaHoraria(existente ? existente.zonaHoraria : zonaHorariaSugerida())}</select>
         <label for="fc-lat">Coordenadas (opcional — para sombrear la noche real en el calendario)</label>
@@ -72,6 +76,39 @@ async function montarVistaCiudades(contenedor, tripId, sesion) {
       </form>
     `);
     modal.querySelector("#fc-cancelar").addEventListener("click", cerrar);
+
+    // Autocompletar contra el catálogo (js/catalogo-ciudades.js): al elegir
+    // una sugerencia se rellenan zona horaria y coordenadas solas, pero
+    // siguen siendo campos normales — el catálogo es solo un atajo, nunca
+    // la única forma de capturar una ciudad.
+    const campoNombre = modal.querySelector("#fc-nombre");
+    const listaSugerencias = modal.querySelector("#fc-sugerencias");
+    function ocultarSugerencias() {
+      listaSugerencias.classList.add("oculto");
+      listaSugerencias.innerHTML = "";
+    }
+    campoNombre.addEventListener("input", () => {
+      const resultados = buscarEnCatalogoCiudades(campoNombre.value);
+      if (resultados.length === 0) { ocultarSugerencias(); return; }
+      listaSugerencias.innerHTML = resultados.map((c, i) =>
+        `<div class="autocompletar-item" data-idx="${i}">${esc(c.nombre)} <span style="color:var(--color-texto-suave)">— ${esc(c.pais)}</span></div>`
+      ).join("");
+      listaSugerencias.classList.remove("oculto");
+      listaSugerencias.querySelectorAll(".autocompletar-item").forEach((el, i) => {
+        el.addEventListener("mousedown", e => {
+          // mousedown (no click) para que dispare antes del blur del input.
+          e.preventDefault();
+          const c = resultados[i];
+          campoNombre.value = c.nombre;
+          modal.querySelector("#fc-zona").value = c.zonaHoraria;
+          modal.querySelector("#fc-lat").value = c.lat;
+          modal.querySelector("#fc-lng").value = c.lng;
+          ocultarSugerencias();
+        });
+      });
+    });
+    campoNombre.addEventListener("blur", () => setTimeout(ocultarSugerencias, 150));
+
     if (existente) {
       modal.querySelector("#fc-eliminar").addEventListener("click", async () => {
         if (confirm(`¿Quitar ciudad "${existente.nombre}"?`)) {

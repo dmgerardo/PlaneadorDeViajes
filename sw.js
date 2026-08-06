@@ -22,6 +22,7 @@ const ARCHIVOS_APP_SHELL = [
   `js/auth.js?v=${APP_VERSION}`,
   `js/vista-admin-viajes.js?v=${APP_VERSION}`,
   `js/vista-info.js?v=${APP_VERSION}`,
+  `js/catalogo-ciudades.js?v=${APP_VERSION}`,
   `js/vista-ciudades.js?v=${APP_VERSION}`,
   `js/vista-calendario.js?v=${APP_VERSION}`,
   `js/vista-ruta.js?v=${APP_VERSION}`,

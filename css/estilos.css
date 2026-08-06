@@ -316,6 +316,22 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .lista-item-clic:active { background: color-mix(in srgb, var(--color-texto) 5%, transparent); }
 .lista-item-chevron { color: var(--color-texto-suave); font-size: 20px; flex: 0 0 auto; }
 
+/* Autocompletar del catálogo de ciudades (js/catalogo-ciudades.js). */
+.autocompletar-envoltura { position: relative; }
+.autocompletar-lista {
+  position: absolute; left: 0; right: 0; top: calc(100% + 2px);
+  z-index: 10;
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.autocompletar-item { padding: 10px 14px; font-size: 14px; cursor: pointer; }
+.autocompletar-item:hover { background: color-mix(in srgb, var(--color-primario) 12%, transparent); }
+.autocompletar-item + .autocompletar-item { border-top: 1px solid var(--color-borde); }
+
 .oculto { display: none !important; }
 
 @media (max-width: 480px) {

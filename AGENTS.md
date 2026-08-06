@@ -40,6 +40,14 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
   `vista-ruta.js` (tab "Ruta") asigna cuál de esas ciudades corresponde a cada día
   (`ciudadPorDia`) — antes ambas cosas coexistían bajo el nombre "Ciudades" y era
   ambiguo, se separaron a propósito en la reestructura de v18.
+- **`js/catalogo-ciudades.js`**: catálogo estático (~310 ciudades, ~65 países más
+  visitados) para autocompletar el campo "Nombre" al agregar una ciudad
+  (`vista-ciudades.js`) — `buscarEnCatalogoCiudades(texto)` filtra por nombre/país sin
+  acentos. Es solo un atajo: al elegir una sugerencia se rellenan zona horaria y
+  coordenadas, pero siguen siendo campos editables normales, y el usuario puede
+  seguir escribiendo cualquier ciudad que no esté en el catálogo sin fricción extra.
+  No lo confundas con `ZONAS_HORARIAS` (`render-utils.js`), que es la lista de husos
+  horarios de `Intl`, no de ciudades.
 - `vista-logistica.js` (tab "Logística") fusiona lo que antes eran las secciones
   "Traslados" y "Hospedajes" de la vieja pestaña "Generales" (ya no existe como tal —
   ver `vista-info.js`, `vista-ciudades.js`, `vista-ruta.js`, `vista-logistica.js`).

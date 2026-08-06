@@ -172,6 +172,29 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   .modal { border-radius: calc(var(--radio) * 1.3); }
 }
 
+/* Indicador de versión, siempre visible en la parte superior */
+.version-badge {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-texto) 8%, transparent);
+  color: var(--color-texto-suave);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.version-badge:hover { background: color-mix(in srgb, var(--color-primario) 18%, transparent); color: var(--color-primario-oscuro); }
+
+.version-badge-flotante {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+}
+
 .lista-item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 0; border-bottom: 1px solid var(--color-borde);

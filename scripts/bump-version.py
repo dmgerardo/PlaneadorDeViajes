@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Sube el número de versión (?v=N) en los <link>/<script> de los HTML
-si el commit que se está por crear toca algún .css o .js.
+"""Sube el número de versión (?v=N) en los <link>/<script> de los HTML,
+y el APP_VERSION visible en js/version.js, si el commit que se está por
+crear toca algún .css o .js.
 Se invoca desde .githooks/pre-commit; no se ejecuta a mano normalmente.
 """
 import re
@@ -10,7 +11,9 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 HTML_FILES = ["index.html", "viaje.html", "historial.html"]
+VERSION_JS = RAIZ / "js" / "version.js"
 PATRON_VERSION = re.compile(r"(\?v=)(\d+)")
+PATRON_APP_VERSION = re.compile(r'(APP_VERSION\s*=\s*")(\d+)(")')
 
 
 def archivos_en_staging():
@@ -41,6 +44,13 @@ def aplicar_version(nueva):
         if nuevo_texto != texto:
             ruta.write_text(nuevo_texto, encoding="utf-8")
             subprocess.run(["git", "add", nombre], cwd=RAIZ, check=True)
+
+    if VERSION_JS.exists():
+        texto = VERSION_JS.read_text(encoding="utf-8")
+        nuevo_texto = PATRON_APP_VERSION.sub(rf"\g<1>{nueva}\g<3>", texto)
+        if nuevo_texto != texto:
+            VERSION_JS.write_text(nuevo_texto, encoding="utf-8")
+            subprocess.run(["git", "add", "js/version.js"], cwd=RAIZ, check=True)
 
 
 def main():

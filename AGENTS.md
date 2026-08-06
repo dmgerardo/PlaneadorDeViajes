@@ -65,6 +65,13 @@ vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos con
 - **Español en toda la UI**, nombres de variables/funciones y comentarios.
 - **Sin sobre-ingeniería**: no agregues frameworks, bundlers, ni abstracciones nuevas sin
   que el usuario lo pida explícitamente.
+- **Versión de la app**: `js/version.js` define `APP_VERSION` y pinta cualquier elemento
+  `.version-badge` (hay uno en cada página: `index.html`, `viaje.html`, `historial.html`).
+  `scripts/bump-version.py` mantiene `APP_VERSION` sincronizado con el contador `?v=N` de
+  cache-busting — nunca lo edites a mano, ni agregues una segunda fuente de verdad para la
+  versión. **Cada commit debe llevar su tag `release-vNN`** (NN = el `APP_VERSION` resultante
+  de ese commit) antes o inmediatamente después de crearlo, y hacer push del tag junto con la
+  rama — es el punto de retorno documentado en el prompt base del proyecto.
 
 ## Seguridad — límites conocidos (documentar, no "arreglar" sin discutirlo)
 

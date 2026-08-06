@@ -4,12 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
-<link rel="stylesheet" href="css/estilos.css?v=6">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/estilos.css?v=7">
 </head>
 <body>
   <div class="contenedor">
-    <p><a href="index.html">← Volver</a></p>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <a href="index.html">← Volver</a>
+      <span class="version-badge" id="badge-version"></span>
+    </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v7 — Versión visible y tags de release</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>La versión de la app ahora es visible siempre en la parte superior (badge que enlaza a este historial), sincronizada con el contador de assets.</li>
+        <li>Cada commit desde ahora lleva su propio tag <code>release-vNN</code> en GitHub.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v4 — Nuevo sistema visual</h3>
@@ -51,5 +64,6 @@
       </ul>
     </div>
   </div>
+  <script src="js/version.js?v=7"></script>
 </body>
 </html>

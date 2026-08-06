@@ -56,13 +56,35 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
-  const url = event.request.url;
+  const req = event.request;
+  const url = req.url;
   // Nunca interceptar Firebase (base de datos/auth en tiempo real) — solo el
   // app shell estático pasa por este service worker.
-  if (event.request.method !== "GET" || url.includes("firebaseio.com") || url.includes("googleapis.com/identitytoolkit")) {
+  if (req.method !== "GET" || url.includes("firebaseio.com") || url.includes("googleapis.com/identitytoolkit")) {
     return;
   }
+
+  // Documentos HTML (navegación entre index.html/viaje.html/historial.html):
+  // red primero. Si solo usáramos caché, dos pestañas que registraron su
+  // service worker en momentos distintos (una antes de un deploy, otra
+  // después) podían quedar mostrando versiones distintas hasta cerrar y
+  // reabrir la app. Con red primero, si hay señal siempre se ve lo último;
+  // el caché solo entra como respaldo si no hay conexión.
+  if (req.mode === "navigate") {
+    event.respondWith(
+      fetch(req).catch(() => caches.open(CACHE_NOMBRE).then(cache => cache.match(req)))
+    );
+    return;
+  }
+
+  // CSS/JS/imágenes: caché primero (más rápido, y ya son inmutables por
+  // versión — el ?v=N cambia si el contenido cambió). IMPORTANTE: se busca
+  // en la caché de ESTA versión (CACHE_NOMBRE), no con caches.match() a
+  // secas — ese buscaba en TODAS las cachés existentes (incluida una
+  // versión vieja todavía no borrada) y podía devolver una copia vieja.
   event.respondWith(
-    caches.match(event.request).then(respuestaCache => respuestaCache || fetch(event.request))
+    caches.open(CACHE_NOMBRE).then(cache =>
+      cache.match(req).then(respuestaCache => respuestaCache || fetch(req))
+    )
   );
 });

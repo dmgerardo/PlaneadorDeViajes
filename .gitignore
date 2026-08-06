@@ -9,3 +9,7 @@ respaldos/
 # Archivos temporales del sistema
 .DS_Store
 Thumbs.db
+
+# Caché local del CLI de Firebase (firebase deploy/firebase serve)
+.firebase/
+firebase-debug.log

@@ -7,7 +7,12 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
 - Sin build ni framework: HTML + CSS + JS vanilla (ES6+), cargado directo por `<script>`.
 - Backend: Firebase Realtime Database (SDK `compat` por CDN) + Authentication anónima.
   No hay servidor propio ni Cloud Functions.
-- Hosting: archivos estáticos (GitHub Pages u otro hosting estático).
+- Hosting: **Firebase Hosting**, deploy automático en cada push a `main` vía GitHub Actions
+  (`.github/workflows/firebase-hosting-merge.yml`, acción `FirebaseExtended/action-hosting-deploy`).
+  Config del sitio en `firebase.json`/`.firebaserc` (mismo proyecto Firebase que la base de
+  datos: `planeadordeviajes`). El secreto `FIREBASE_SERVICE_ACCOUNT_PLANEADORDEVIAJES` vive
+  en GitHub → Settings → Secrets, no en el repo. Se migró desde GitHub Pages en v18 (mismo
+  proveedor que ya usábamos para Auth/DB, y no depende del pipeline de Pages).
 - Cada pantalla (`index.html`, `viaje.html`) carga los mismos scripts base
   (`firebase-config.js`, `render-utils.js`, `db.js`, `auth.js`) y luego los scripts de vista
   que necesita.

@@ -42,7 +42,7 @@ si dos personas la abren al mismo tiempo, ambas ven los cambios de inmediato.
 
 ## Cómo se usa
 
-1. Abre `index.html` (localmente, o publicado en GitHub Pages).
+1. Abre `index.html` (localmente, o publicado en Firebase Hosting).
 2. Escribe tu nombre y una contraseña. Si es la primera vez, se crea tu cuenta con esa
    contraseña; si ya existías, debes escribir la misma contraseña de siempre.
 3. Crea un viaje nuevo, o pide a quien lo creó que te comparta la **clave de invitación**

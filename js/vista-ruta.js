@@ -1,6 +1,8 @@
 // Vista "Ruta": asigna la ciudad en la que se está cada día del viaje,
-// mediante un timeline — toca una ciudad y arrastra sobre los días para
-// pintarla (o "🧹 Vaciar" para quitarla). Esta asignación explícita
+// mediante un timeline — toca una ciudad y luego toca cada día para irla
+// asignando (o "🧹 Quitar" para ir borrando). No es arrastre: con mouse,
+// arrastrar pintaba de más las celdas "en el camino" del puntero sin
+// querer — un clic por día es más predecible. Esta asignación explícita
 // (ciudadPorDia) es la que usan las vistas Agenda/Calendario para saber
 // en qué ciudad estás cada día, y para no dejarte agendar un lugar en el
 // día equivocado. Reutiliza HORA_PX/COLORES_CIUDAD/colorCss/listaDeDias,
@@ -14,7 +16,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     <div class="tarjeta">
       <h2>Ruta por día</h2>
       <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
-        Toca una ciudad y arrastra sobre los días para asignarla (o "🧹 Vaciar" para quitarla).
+        Toca una ciudad y luego toca cada día para asignarla (o "🧹 Quitar" para ir borrando).
         El Calendario y la Agenda usan esta asignación para saber en qué ciudad estás cada día.
       </p>
       <div class="ciudad-timeline" id="ciudad-timeline"></div>
@@ -28,8 +30,6 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
 
   const estado = { info: {}, ciudades: {}, ciudadPorDiaManual: {} };
   let ciudadSeleccionada = null;
-  let pintando = false;
-  let cambiosPintura = {};
 
   function colorParaCiudad(ciudadId) {
     const ids = Object.keys(estado.ciudades);
@@ -61,8 +61,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
       } else {
         celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span>`;
       }
-      celda.addEventListener("pointerdown", () => iniciarPintura(dia));
-      celda.addEventListener("pointerenter", () => continuarPintura(dia));
+      celda.addEventListener("click", () => asignarDia(dia));
       wrap.appendChild(celda);
     });
 
@@ -87,7 +86,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     const chipBorrar = document.createElement("div");
     const borrarActivo = ciudadSeleccionada === "__borrar__";
     chipBorrar.className = "cal-chip-pendiente" + (borrarActivo ? " seleccionado" : "");
-    chipBorrar.textContent = "🧹 Vaciar";
+    chipBorrar.textContent = "🧹 Quitar";
     chipBorrar.addEventListener("click", () => {
       ciudadSeleccionada = borrarActivo ? null : "__borrar__";
       render();
@@ -95,41 +94,21 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     chipsEl.appendChild(chipBorrar);
   }
 
-  function iniciarPintura(dia) {
+  // Un clic por día: primero se elige una ciudad (o "Quitar") arriba, y
+  // cada clic siguiente en un día la asigna (o la borra) — sin arrastre,
+  // para que un mouse no pinte de más las celdas de en medio sin querer.
+  async function asignarDia(dia) {
     if (!ciudadSeleccionada) return;
-    pintando = true;
-    cambiosPintura = {};
-    aplicarPintura(dia);
-  }
-  function continuarPintura(dia) {
-    if (!pintando) return;
-    aplicarPintura(dia);
-  }
-  function aplicarPintura(dia) {
     const valor = ciudadSeleccionada === "__borrar__" ? null : ciudadSeleccionada;
-    cambiosPintura[dia] = valor;
     estado.ciudadPorDiaManual = { ...estado.ciudadPorDiaManual, [dia]: valor };
     render();
+    await actualizar(refCiudadPorDia, { [dia]: valor });
   }
-  async function finalizarPintura() {
-    if (!pintando) return;
-    pintando = false;
-    const mapa = {};
-    Object.entries(cambiosPintura).forEach(([dia, valor]) => {
-      mapa[`viajes/${tripId}/ciudadPorDia/${dia}`] = valor;
-    });
-    cambiosPintura = {};
-    if (Object.keys(mapa).length) await actualizarMultiple(mapa);
-  }
-  document.addEventListener("pointerup", finalizarPintura);
 
   const solicitarRender = programarRender(render);
   const cancelarInfo = escuchar(refInfo, v => { estado.info = v; solicitarRender(); });
   const cancelarCiudades = escuchar(refCiudades, v => { estado.ciudades = v; solicitarRender(); });
   const cancelarCiudadPorDia = escuchar(refCiudadPorDia, v => { estado.ciudadPorDiaManual = v; solicitarRender(); });
 
-  return () => {
-    document.removeEventListener("pointerup", finalizarPintura);
-    cancelarInfo(); cancelarCiudades(); cancelarCiudadPorDia();
-  };
+  return () => { cancelarInfo(); cancelarCiudades(); cancelarCiudadPorDia(); };
 }

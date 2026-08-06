@@ -83,6 +83,17 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     ).join("");
   }
 
+  // Zona horaria real de una ciudad por nombre (la de origen del viaje, o
+  // alguna de "ciudades"). Check-in/check-out y horas de traslados SIEMPRE se
+  // calculan en la hora LOCAL de la ciudad correspondiente, nunca en la de
+  // origen del viaje salvo que justo esa sea la ciudad en cuestión.
+  function zonaDeNombreCiudad(nombre) {
+    if (!nombre) return infoCache.zonaOrigen || "America/Mexico_City";
+    if (nombre === infoCache.ciudadOrigen) return infoCache.zonaOrigen || "America/Mexico_City";
+    const ciudad = Object.values(ciudadesCache).find(c => c.nombre === nombre);
+    return ciudad ? ciudad.zonaHoraria : (infoCache.zonaOrigen || "America/Mexico_City");
+  }
+
   const renderInfo = programarRender(info => {
     infoCache = info;
     const el = document.getElementById("g-info");
@@ -196,7 +207,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       fila.className = "lista-item";
       fila.innerHTML = `
         <div>
-          <strong>${esc(h.nombre)}</strong><br>
+          <strong>${esc(h.nombre)}</strong>${h.ciudad ? ` <span style="font-weight:400;">— ${esc(h.ciudad)}</span>` : ""}<br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
             Check-in: ${esc(formatoFecha(h.checkinUTC, "UTC"))}
             ${h.checkoutUTC ? ` · Check-out: ${esc(formatoFecha(h.checkoutUTC, "UTC"))}` : ""}
@@ -309,11 +320,12 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   // --- Traslado: agregar o editar ---
   function abrirFormularioTraslado(idExistente) {
     const existente = idExistente ? trasladosCache[idExistente] : null;
-    const zona = infoCache.zonaOrigen || "America/Mexico_City";
-    const valInicioFecha = existente ? existente.inicioUTC.slice(0, 10) : "";
-    const valInicioHora = existente ? formatoHora(existente.inicioUTC, zona) : "09:00";
-    const valFinFecha = existente && existente.finUTC ? fechaISO(existente.finUTC, existente.zonaDestino || zona) : "";
-    const valFinHora = existente && existente.finUTC ? formatoHora(existente.finUTC, existente.zonaDestino || zona) : "12:00";
+    const zonaOrigenDefault = existente ? zonaDeNombreCiudad(existente.origen) : zonaDeNombreCiudad(infoCache.ciudadOrigen || "");
+    const zonaDestinoDefault = existente ? zonaDeNombreCiudad(existente.destino) : "";
+    const valInicioFecha = existente ? fechaISO(existente.inicioUTC, zonaOrigenDefault) : "";
+    const valInicioHora = existente ? formatoHora(existente.inicioUTC, zonaOrigenDefault) : "09:00";
+    const valFinFecha = existente && existente.finUTC ? fechaISO(existente.finUTC, zonaDestinoDefault || zonaOrigenDefault) : "";
+    const valFinHora = existente && existente.finUTC ? formatoHora(existente.finUTC, zonaDestinoDefault || zonaOrigenDefault) : "12:00";
 
     const { modal, cerrar } = abrirModal(`
       <h3>${existente ? "Editar traslado" : "Agregar traslado"}</h3>
@@ -331,14 +343,12 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <select id="ft-destino" required>${opcionesCiudadesTraslado(existente ? existente.destino : "")}</select>
         <label for="ft-fecha">Fecha de salida</label>
         <input id="ft-fecha" type="date" required value="${esc(valInicioFecha)}"${limitesFecha()}>
-        <label for="ft-hora">Hora de salida (zona de origen)</label>
+        <label for="ft-hora">Hora de salida (hora local del origen)</label>
         <input id="ft-hora" type="time" value="${esc(valInicioHora)}" required>
         <label for="ft-fecha-llegada">Fecha de llegada</label>
         <input id="ft-fecha-llegada" type="date" required value="${esc(valFinFecha)}"${limitesFecha()}>
-        <label for="ft-hora-llegada">Hora de llegada (zona de destino)</label>
+        <label for="ft-hora-llegada">Hora de llegada (hora local del destino)</label>
         <input id="ft-hora-llegada" type="time" value="${esc(valFinHora)}" required>
-        <label for="ft-zona-destino">Zona horaria de destino</label>
-        <select id="ft-zona-destino" required>${opcionesZonaHoraria(existente ? (existente.zonaDestino || zona) : zonaHorariaSugerida())}</select>
         <label for="ft-confirmacion">Clave/número de confirmación</label>
         <input id="ft-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.confirmacion || "") : "")}">
         <div class="fila-botones">
@@ -364,12 +374,16 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       const hora = modal.querySelector("#ft-hora").value;
       const fechaLlegada = modal.querySelector("#ft-fecha-llegada").value || fecha;
       const horaLlegada = modal.querySelector("#ft-hora-llegada").value;
-      const zonaDestino = modal.querySelector("#ft-zona-destino").value;
       const confirmacion = modal.querySelector("#ft-confirmacion").value.trim();
-      if (!origen || !destino || !fecha || !hora || !horaLlegada || !zonaDestino) return;
-      const inicioUTC = localAUTC(fecha, hora, zona);
-      const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaDestino);
-      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion };
+      if (!origen || !destino || !fecha || !hora || !horaLlegada) return;
+      // Cada hora se interpreta en la zona LOCAL de su propia ciudad (origen/destino),
+      // no en la zona de origen del viaje — para traslados internos (p.ej. entre dos
+      // ciudades visitadas) eso daría una hora incorrecta.
+      const zonaSalida = zonaDeNombreCiudad(origen);
+      const zonaLlegada = zonaDeNombreCiudad(destino);
+      const inicioUTC = localAUTC(fecha, hora, zonaSalida);
+      const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaLlegada);
+      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino: zonaLlegada, confirmacion };
       if (existente) await actualizar(refTraslados.child(idExistente), datos);
       else await agregar(refTraslados, datos);
       cerrar();
@@ -386,14 +400,15 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   // --- Hospedaje: agregar o editar ---
   function abrirFormularioHospedaje(idExistente) {
     const existente = idExistente ? hospedajesCache[idExistente] : null;
-    const zona = infoCache.zonaOrigen || "America/Mexico_City";
     const { modal, cerrar } = abrirModal(`
       <h3>${existente ? "Editar hospedaje" : "Agregar hospedaje"}</h3>
       <form id="form-hospedaje">
         <label for="fh-nombre">Nombre</label>
         <input id="fh-nombre" type="text" placeholder="Ej. Hotel Plaza" required autofocus value="${esc(existente ? existente.nombre : "")}">
+        <label for="fh-ciudad">Ciudad</label>
+        <select id="fh-ciudad" required>${opcionesCiudadesTraslado(existente ? existente.ciudad : infoCache.ciudadOrigen || "")}</select>
         <label for="fh-fecha">Fecha de check-in</label>
-        <input id="fh-fecha" type="date" required value="${esc(existente ? existente.checkinUTC.slice(0, 10) : "")}"${limitesFecha()}>
+        <input id="fh-fecha" type="date" required value="${esc(existente ? fechaISO(existente.checkinUTC, zonaDeNombreCiudad(existente.ciudad)) : "")}"${limitesFecha()}>
         <label for="fh-noches">Número de noches</label>
         <input id="fh-noches" type="number" min="1" step="1" value="${esc(existente ? (existente.noches || 1) : 1)}" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>
@@ -408,19 +423,29 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     modal.querySelector("#form-hospedaje").addEventListener("submit", async e => {
       e.preventDefault();
       const nombre = modal.querySelector("#fh-nombre").value.trim();
+      const ciudad = modal.querySelector("#fh-ciudad").value.trim();
       const fecha = modal.querySelector("#fh-fecha").value;
       const noches = Number(modal.querySelector("#fh-noches").value) || 1;
       const claveReservacion = modal.querySelector("#fh-confirmacion").value.trim();
-      if (!nombre || !fecha) return;
+      if (!nombre || !ciudad || !fecha) return;
+      // Check-in/check-out en la hora LOCAL de la ciudad del hospedaje, no en
+      // la zona de origen del viaje.
+      const zona = zonaDeNombreCiudad(ciudad);
       const checkinUTC = localAUTC(fecha, "15:00", zona);
       const checkoutUTC = localAUTC(sumarDias(fecha, noches), "11:00", zona);
-      const datos = { nombre, checkinUTC, checkoutUTC, noches, claveReservacion };
+      const datos = { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion };
       if (existente) await actualizar(refHospedajes.child(idExistente), datos);
       else await agregar(refHospedajes, datos);
       cerrar();
     });
   }
-  document.getElementById("g-btn-hospedaje").addEventListener("click", () => abrirFormularioHospedaje(null));
+  document.getElementById("g-btn-hospedaje").addEventListener("click", () => {
+    if (nombresCiudadesTraslado(null).length === 0) {
+      alert("Primero captura la ciudad de origen (arriba) o agrega al menos una ciudad.");
+      return;
+    }
+    abrirFormularioHospedaje(null);
+  });
 
   const cancelarInfo = escuchar(refInfo, renderInfo);
   const cancelarCiudades = escuchar(refCiudades, renderCiudades);

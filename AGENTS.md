@@ -42,7 +42,13 @@ viajes/{tripId}:
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
   ciudadPorDia/{fecha}: ciudadId  // asignación explícita del timeline; fecha = "AAAA-MM-DD"
   traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion }
-  hospedajes/{hospedajeId}: { nombre, checkinUTC, checkoutUTC, noches, claveReservacion }
+  hospedajes/{hospedajeId}: { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion }
+  // origen/destino/ciudad son nombres (texto) elegidos de la lista combinada
+  // info.ciudadOrigen + nombres de "ciudades" — ver opcionesCiudadesTraslado() en
+  // vista-generales.js. inicioUTC/checkinUTC SIEMPRE se calculan con
+  // zonaDeNombreCiudad(nombre), es decir la hora LOCAL de esa ciudad concreta —
+  // nunca con info.zonaOrigen a menos que esa ciudad sea justo la de origen. No
+  // reintroduzcas "zona = infoCache.zonaOrigen" como default para estas horas.
   checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden }
   participantes/{userId}: { rol: "admin" | "participante", nombre }
 ```

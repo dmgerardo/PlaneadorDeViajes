@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=16">
+<link rel="stylesheet" href="css/estilos.css?v=17">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v17 — Check-in/check-out en hora local, no de origen</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Corregido:</strong> los hospedajes no tenían ciudad asociada y su check-in/check-out siempre se calculaban con la zona horaria de origen del viaje, sin importar dónde estuviera el hotel. Ahora piden la ciudad y calculan en su hora local real.</li>
+        <li><strong>Corregido:</strong> los traslados internos (entre dos ciudades del viaje, no desde/hacia el origen) también usaban por error la zona de origen para la hora de salida. Ahora cada hora usa la zona de su propia ciudad; se quitó el selector manual de "zona de destino" porque ahora se deduce solo del destino elegido.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v16 — Sombra de noche real en Calendario/Agenda</h3>
@@ -154,6 +163,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=16"></script>
+  <script src="js/version.js?v=17"></script>
 </body>
 </html>

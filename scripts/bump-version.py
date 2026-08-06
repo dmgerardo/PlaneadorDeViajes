@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Sube el número de versión (?v=N) en los <link>/<script> de los HTML,
-y el APP_VERSION visible en js/version.js, si el commit que se está por
+y el APP_VERSION en js/app-version.js, si el commit que se está por
 crear toca algún .css o .js.
 Se invoca desde .githooks/pre-commit; no se ejecuta a mano normalmente.
 """
@@ -50,7 +50,7 @@ def aplicar_version(nueva):
         nuevo_texto = PATRON_APP_VERSION.sub(rf"\g<1>{nueva}\g<3>", texto)
         if nuevo_texto != texto:
             VERSION_JS.write_text(nuevo_texto, encoding="utf-8")
-            subprocess.run(["git", "add", "js/version.js"], cwd=RAIZ, check=True)
+            subprocess.run(["git", "add", str(VERSION_JS.relative_to(RAIZ))], cwd=RAIZ, check=True)
 
 
 def main():

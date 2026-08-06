@@ -28,6 +28,12 @@ const ARCHIVOS_APP_SHELL = [
   `js/vista-logistica.js?v=${APP_VERSION}`,
   `js/vista-lugares.js?v=${APP_VERSION}`,
   `js/vista-checklist.js?v=${APP_VERSION}`,
+  "icons/favicon-16.png",
+  "icons/favicon-32.png",
+  "icons/favicon-48.png",
+  "icons/apple-touch-icon.png",
+  "icons/icon-192.png",
+  "icons/icon-512.png",
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js",
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js",
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"

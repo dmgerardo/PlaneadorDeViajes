@@ -374,10 +374,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorParaCiudad(lugar.ciudadId);
     div.innerHTML = `
-      <div class="acciones">
-        <span data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? "🔒" : "📌"}</span>
-        <span data-accion="quitar" title="Quitar del calendario">✕</span>
-      </div>
+      <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? "🔒" : "📌"}</span>
+      <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">✕</span>
       <div class="titulo">${lugar.aireLibre ? "❄️ " : ""}${esc(lugar.nombre)}</div>
       <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)}</div>
       ${bloque.fijado ? "" : '<div class="resize"></div>'}
@@ -403,16 +401,21 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   // Arrastre vertical (cambia hora) y, si el puntero cruza a la columna de
   // otro día cuya ciudad coincide con la del lugar, también cambia de día.
   function habilitarArrastre(div, areaInicial, id, bloque, zonaHorariaInicial, ciudadPorDia) {
-    let arrastrando = false, offsetY = 0, nuevoTop = 0;
+    let arrastrando = false, offsetY = 0, nuevoTop = 0, topInicial = 0, seMovio = false;
     let areaActual = areaInicial;
     let zonaActual = zonaHorariaInicial;
 
     div.addEventListener("pointerdown", e => {
       if (e.target.closest(".resize") || e.target.closest("[data-accion]")) return;
       arrastrando = true;
+      seMovio = false;
       areaActual = areaInicial;
       zonaActual = zonaHorariaInicial;
       offsetY = e.clientY - div.getBoundingClientRect().top;
+      // Un simple tap (sin pointermove) debe dejar el bloque donde estaba,
+      // no mandarlo a las 00:00 — por eso arrancamos desde su posición actual.
+      topInicial = parseFloat(div.style.top) || 0;
+      nuevoTop = topInicial;
       div.setPointerCapture(e.pointerId);
       div.style.zIndex = "10";
     });
@@ -436,12 +439,15 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       const rectArea = areaActual.getBoundingClientRect();
       nuevoTop = Math.max(0, Math.min(23.5 * HORA_PX, e.clientY - rectArea.top - offsetY));
       nuevoTop = Math.round(nuevoTop / (HORA_PX / 4)) * (HORA_PX / 4); // snap a 15 min
+      if (Math.abs(nuevoTop - topInicial) > 0.5 || areaActual !== areaInicial) seMovio = true;
       div.style.top = `${nuevoTop}px`;
     });
     div.addEventListener("pointerup", async () => {
       if (!arrastrando) return;
       arrastrando = false;
       div.style.zIndex = "";
+      // Un tap sin arrastre real no debe mover ni reescribir nada.
+      if (!seMovio) return;
       const dia = areaActual.dataset.dia;
       const nuevaHoraDecimal = nuevoTop / HORA_PX;
       const duracionHoras = (new Date(bloque.finUTC) - new Date(bloque.inicioUTC)) / 3600000;

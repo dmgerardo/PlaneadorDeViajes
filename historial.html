@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=11">
+<link rel="stylesheet" href="css/estilos.css?v=12">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v12 — Corrige movimiento accidental de bloques</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Corregido:</strong> un simple toque (sin arrastrar) en un bloque sin fijar lo mandaba accidentalmente a las 00:00.</li>
+        <li>Los íconos de fijar (📌) y quitar (✕) ahora están en esquinas opuestas del bloque, para no cerrarlo por accidente al querer fijarlo.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v11 — Timeline de ciudades, agenda diaria y mejoras a la cuadrícula</h3>
@@ -108,6 +117,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=11"></script>
+  <script src="js/version.js?v=12"></script>
 </body>
 </html>

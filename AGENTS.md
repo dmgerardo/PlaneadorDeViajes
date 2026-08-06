@@ -103,7 +103,16 @@ porque no hay backend propio ni dirección de correo capturada.
   `abrirFormularioX(idExistente)`: si `idExistente` es `null` crea (título/botón "Agregar",
   `agregar()`); si trae un id, precarga los `value=` desde el cache local y usa
   `actualizar()` en vez de `agregar()`. No dupliques el HTML del formulario entre el botón
-  "+ Agregar" y el botón "Editar" de cada fila — ambos deben llamar a la misma función.
+  "+ Agregar" y la fila de la lista — ambos deben llamar a la misma función.
+- **Filas/tarjetas de lista sin botón "Editar" aparte**: la fila completa lleva la clase
+  `lista-item-clic` (o `tarjeta lista-item-clic`) y un solo listener de `click` que abre
+  `abrirFormularioX(id)` directamente — un botón "Editar" al lado sería redundante con
+  poder tocar la fila. El botón "Eliminar" (`class="peligro"`) vive **dentro** de ese
+  formulario, al final de `.fila-botones`, solo cuando `existente` — no en la fila de la
+  lista. Si la fila tiene otros elementos clicables que no deben abrir edición (ligas
+  externas en Lugares, por ejemplo), el listener debe hacer `if (e.target.closest("a"))
+  return;` antes de abrir el formulario. Ver `vista-ciudades.js`, `vista-logistica.js`,
+  `vista-lugares.js`.
 - **`input[type="checkbox"|"radio"]` no debe llevar el estilo de pill genérico.** El
   selector `input, select, textarea` en `estilos.css` es solo para campos de texto; los
   checkboxes tienen su propia regla (18px, `appearance: auto`) — si un checkbox se ve como

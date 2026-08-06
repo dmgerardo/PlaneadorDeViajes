@@ -79,7 +79,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       const zonaSalida = zonaDeNombreCiudad(t.origen);
       const duracion = t.finUTC ? formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC)) : "";
       const fila = document.createElement("div");
-      fila.className = "lista-item";
+      fila.className = "lista-item lista-item-clic";
       fila.innerHTML = `
         <div>
           <strong>${esc(t.tipo)} — ${esc(t.origen)} → ${esc(t.destino)}</strong><br>
@@ -89,15 +89,9 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             Confirmación: ${esc(t.confirmacion || "-")}
           </span>
         </div>
-        <div class="fila-botones" style="margin:0;">
-          <button class="texto" data-accion="editar">Editar</button>
-          <button class="texto" data-accion="quitar">Quitar</button>
-        </div>
+        <span class="lista-item-chevron">›</span>
       `;
-      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioTraslado(id));
-      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
-        if (confirm("¿Quitar este traslado?")) await eliminar(refTraslados.child(id));
-      });
+      fila.addEventListener("click", () => abrirFormularioTraslado(id));
       el.appendChild(fila);
     });
   });
@@ -114,7 +108,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
     entradas.forEach(([id, h]) => {
       const zona = zonaDeNombreCiudad(h.ciudad);
       const fila = document.createElement("div");
-      fila.className = "lista-item";
+      fila.className = "lista-item lista-item-clic";
       fila.innerHTML = `
         <div>
           <strong>${esc(h.nombre)}</strong>${h.ciudad ? ` <span style="font-weight:400;">— ${esc(h.ciudad)}</span>` : ""}<br>
@@ -125,15 +119,9 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             Confirmación: ${esc(h.claveReservacion || "-")}
           </span>
         </div>
-        <div class="fila-botones" style="margin:0;">
-          <button class="texto" data-accion="editar">Editar</button>
-          <button class="texto" data-accion="quitar">Quitar</button>
-        </div>
+        <span class="lista-item-chevron">›</span>
       `;
-      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioHospedaje(id));
-      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
-        if (confirm("¿Quitar este hospedaje?")) await eliminar(refHospedajes.child(id));
-      });
+      fila.addEventListener("click", () => abrirFormularioHospedaje(id));
       el.appendChild(fila);
     });
   });
@@ -175,11 +163,20 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="ft-cancelar">Cancelar</button>
+          ${existente ? `<button type="button" class="peligro" id="ft-eliminar">Eliminar</button>` : ""}
         </div>
       </form>
     `);
     if (existente) modal.querySelector("#ft-tipo").value = existente.tipo;
     modal.querySelector("#ft-cancelar").addEventListener("click", cerrar);
+    if (existente) {
+      modal.querySelector("#ft-eliminar").addEventListener("click", async () => {
+        if (confirm("¿Quitar este traslado?")) {
+          await eliminar(refTraslados.child(idExistente));
+          cerrar();
+        }
+      });
+    }
     // La fecha de llegada por default es la misma que la de salida; el usuario la
     // cambia solo si el traslado cruza la medianoche.
     modal.querySelector("#ft-fecha").addEventListener("change", e => {
@@ -237,10 +234,19 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fh-cancelar">Cancelar</button>
+          ${existente ? `<button type="button" class="peligro" id="fh-eliminar">Eliminar</button>` : ""}
         </div>
       </form>
     `);
     modal.querySelector("#fh-cancelar").addEventListener("click", cerrar);
+    if (existente) {
+      modal.querySelector("#fh-eliminar").addEventListener("click", async () => {
+        if (confirm("¿Quitar este hospedaje?")) {
+          await eliminar(refHospedajes.child(idExistente));
+          cerrar();
+        }
+      });
+    }
     modal.querySelector("#form-hospedaje").addEventListener("submit", async e => {
       e.preventDefault();
       const nombre = modal.querySelector("#fh-nombre").value.trim();

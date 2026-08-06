@@ -309,6 +309,13 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 }
 .lista-item:last-child { border-bottom: none; }
 
+/* Filas/tarjetas donde tocar en cualquier parte abre el modo de edición
+   (el botón de eliminar vive al final de ese formulario, no aquí, para no
+   duplicar la acción de "editar" con un botón aparte). */
+.lista-item-clic { cursor: pointer; }
+.lista-item-clic:active { background: color-mix(in srgb, var(--color-texto) 5%, transparent); }
+.lista-item-chevron { color: var(--color-texto-suave); font-size: 20px; flex: 0 0 auto; }
+
 .oculto { display: none !important; }
 
 @media (max-width: 480px) {

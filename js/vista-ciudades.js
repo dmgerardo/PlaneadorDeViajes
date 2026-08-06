@@ -39,18 +39,12 @@ async function montarVistaCiudades(contenedor, tripId, sesion) {
     }
     ordenadas.forEach(([id, c]) => {
       const fila = document.createElement("div");
-      fila.className = "lista-item";
+      fila.className = "lista-item lista-item-clic";
       fila.innerHTML = `
         <div><strong>${esc(c.nombre)}</strong><br><span style="font-size:12px;color:var(--color-texto-suave)">${esc(c.zonaHoraria)}</span></div>
-        <div class="fila-botones" style="margin:0;">
-          <button class="texto" data-accion="editar">Editar</button>
-          <button class="texto" data-accion="quitar">Quitar</button>
-        </div>
+        <span class="lista-item-chevron">›</span>
       `;
-      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioCiudad(id));
-      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
-        if (confirm(`¿Quitar ciudad "${c.nombre}"?`)) await eliminar(refCiudades.child(id));
-      });
+      fila.addEventListener("click", () => abrirFormularioCiudad(id));
       el.appendChild(fila);
     });
   });
@@ -73,10 +67,19 @@ async function montarVistaCiudades(contenedor, tripId, sesion) {
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
+          ${existente ? `<button type="button" class="peligro" id="fc-eliminar">Eliminar</button>` : ""}
         </div>
       </form>
     `);
     modal.querySelector("#fc-cancelar").addEventListener("click", cerrar);
+    if (existente) {
+      modal.querySelector("#fc-eliminar").addEventListener("click", async () => {
+        if (confirm(`¿Quitar ciudad "${existente.nombre}"?`)) {
+          await eliminar(refCiudades.child(idExistente));
+          cerrar();
+        }
+      });
+    }
     modal.querySelector("#form-ciudad").addEventListener("submit", async e => {
       e.preventDefault();
       const nombre = modal.querySelector("#fc-nombre").value.trim();

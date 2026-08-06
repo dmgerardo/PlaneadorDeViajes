@@ -66,7 +66,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
       .forEach(([id, l]) => {
         const ciudad = ciudadesCache[l.ciudadId];
         const tarjeta = document.createElement("div");
-        tarjeta.className = "tarjeta";
+        tarjeta.className = "tarjeta lista-item-clic";
         tarjeta.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
@@ -76,16 +76,17 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
             <span class="chip ${esc(l.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[l.categoria] || l.categoria)}</span>
           </div>
           ${l.notas ? `<p style="font-size:13px;">${esc(l.notas)}</p>` : ""}
+          ${(l.liga_mapa || (l.ligas || []).length) ? `
           <div class="fila-botones">
             ${l.liga_mapa ? `<a href="${esc(l.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button class="secundario">🗺️ Mapa</button></a>` : ""}
             ${(l.ligas || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><button class="secundario">🔗 Liga</button></a>`).join("")}
-            <button class="texto" data-accion="editar">Editar</button>
-            <button class="texto" data-accion="borrar">Quitar</button>
-          </div>
+          </div>` : ""}
         `;
-        tarjeta.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioLugar(id));
-        tarjeta.querySelector('[data-accion="borrar"]').addEventListener("click", async () => {
-          if (confirm(`¿Quitar "${l.nombre}" de la lista?`)) await eliminar(refLugares.child(id));
+        // Las ligas de Mapa/Interés abren en otra pestaña y no deben disparar
+        // el modo de edición — solo el resto de la tarjeta lo abre.
+        tarjeta.addEventListener("click", e => {
+          if (e.target.closest("a")) return;
+          abrirFormularioLugar(id);
         });
         el.appendChild(tarjeta);
       });
@@ -154,10 +155,19 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fl-cancelar">Cancelar</button>
+          ${existente ? `<button type="button" class="peligro" id="fl-eliminar">Eliminar</button>` : ""}
         </div>
       </form>
     `);
     modal.querySelector("#fl-cancelar").addEventListener("click", cerrar);
+    if (existente) {
+      modal.querySelector("#fl-eliminar").addEventListener("click", async () => {
+        if (confirm(`¿Quitar "${existente.nombre}" de la lista?`)) {
+          await eliminar(refLugares.child(idExistente));
+          cerrar();
+        }
+      });
+    }
     modal.querySelector("#form-lugar").addEventListener("submit", async e => {
       e.preventDefault();
       const nombre = modal.querySelector("#fl-nombre").value.trim();

@@ -3,7 +3,7 @@
   "short_name": "Planeador",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f5f6f8",
-  "theme_color": "#2f6fed",
+  "background_color": "#f5ead8",
+  "theme_color": "#c67139",
   "icons": []
 }

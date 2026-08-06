@@ -1,11 +1,21 @@
-// Vista "Checklist": lista de empaque compartida por el viaje.
+// Vista "Checklist": lista de empaque compartida por el viaje, más una
+// segunda lista de pendientes propios del viaje (comprar Suica, reservar un
+// restaurante, etc.) — mismo modelo de datos, con un campo "categoria" que
+// las separa, y un switch arriba para alternar entre las dos.
 // Cada persona tiene su propio checkbox de hecho/no hecho por ítem.
-// Los ítems se pueden reordenar arrastrando desde la manija ⠿⠿.
+// Los ítems se pueden reordenar arrastrando desde la manija ⠿⠿ (el orden es
+// independiente entre categorías).
+
+const CATEGORIA_CHECKLIST_DEFAULT = "empaque";
 
 async function montarVistaChecklist(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta">
       <h2>Checklist</h2>
+      <div class="segmentado" id="chk-switch">
+        <button type="button" data-cat="empaque">Antes de viajar</button>
+        <button type="button" data-cat="viaje">Durante el viaje</button>
+      </div>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;" id="chk-tabla"></table>
       </div>
@@ -25,6 +35,21 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
 
   let participantesCache = { [sesion.userId]: { nombre: sesion.nombre } };
   let itemsCache = {};
+  let categoriaActual = CATEGORIA_CHECKLIST_DEFAULT;
+
+  function categoriaDe(item) {
+    return item.categoria || CATEGORIA_CHECKLIST_DEFAULT;
+  }
+
+  contenedor.querySelectorAll("#chk-switch button").forEach(btn => {
+    btn.classList.toggle("activo", btn.dataset.cat === categoriaActual);
+    btn.addEventListener("click", () => {
+      if (btn.dataset.cat === categoriaActual) return;
+      categoriaActual = btn.dataset.cat;
+      contenedor.querySelectorAll("#chk-switch button").forEach(b => b.classList.toggle("activo", b.dataset.cat === categoriaActual));
+      solicitarRender();
+    });
+  });
 
   function habilitarArrastreFila(tr, id, tabla) {
     const handle = tr.querySelector(".chk-handle");
@@ -75,7 +100,9 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
     `;
     tabla.appendChild(filaEncabezado);
 
-    const items = Object.entries(itemsCache).sort((a, b) => (a[1].orden ?? 9999) - (b[1].orden ?? 9999));
+    const items = Object.entries(itemsCache)
+      .filter(([, item]) => categoriaDe(item) === categoriaActual)
+      .sort((a, b) => (a[1].orden ?? 9999) - (b[1].orden ?? 9999));
     if (items.length === 0) {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td colspan="${personas.length + 3}" style="padding:12px;color:var(--color-texto-suave);text-align:center;">Sin ítems todavía.</td>`;
@@ -111,15 +138,19 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
     });
   }
 
-  async function agregarItem(nombre, ordenBase) {
-    await agregar(refChecklist, { nombre, porPersona: {}, orden: ordenBase });
+  function itemsEnCategoriaActual() {
+    return Object.values(itemsCache).filter(item => categoriaDe(item) === categoriaActual).length;
+  }
+
+  async function agregarItem(nombre, ordenBase, categoria) {
+    await agregar(refChecklist, { nombre, porPersona: {}, orden: ordenBase, categoria });
   }
 
   document.getElementById("chk-btn-agregar").addEventListener("click", async () => {
     const campo = document.getElementById("chk-nuevo-item");
     const nombre = campo.value.trim();
     if (!nombre) return;
-    await agregarItem(nombre, Object.keys(itemsCache).length);
+    await agregarItem(nombre, itemsEnCategoriaActual(), categoriaActual);
     campo.value = "";
   });
   document.getElementById("chk-nuevo-item").addEventListener("keydown", e => {
@@ -144,9 +175,9 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       const texto = modal.querySelector("#chk-varios-texto").value;
       const nombres = texto.split(",").map(s => s.trim()).filter(Boolean);
       if (nombres.length === 0) return;
-      let siguienteOrden = Object.keys(itemsCache).length;
+      let siguienteOrden = itemsEnCategoriaActual();
       for (const nombre of nombres) {
-        await agregarItem(nombre, siguienteOrden++);
+        await agregarItem(nombre, siguienteOrden++, categoriaActual);
       }
       cerrar();
     });
@@ -186,9 +217,9 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       const otroTripId = modal.querySelector("#ic-viaje").value;
       const snap = await db.ref(`viajes/${otroTripId}/checklist`).get();
       const itemsOtro = Object.values(snap.val() || {});
-      let siguienteOrden = Object.keys(itemsCache).length;
+      let siguienteOrden = itemsEnCategoriaActual();
       for (const item of itemsOtro) {
-        await agregarItem(item.nombre, siguienteOrden++);
+        await agregarItem(item.nombre, siguienteOrden++, categoriaActual);
       }
       cerrar();
     });

@@ -72,12 +72,41 @@ async function unirseAViaje(sesion, clave) {
   return tripId;
 }
 
+// Antes de dar de alta un nombre que no existe, confirmamos con la persona
+// para no crear una cuenta duplicada por un simple typo en el nombre.
+function confirmarCrearCuenta(nombre) {
+  return new Promise(resolve => {
+    const { modal, cerrar } = abrirModal(`
+      <h3>¿Crear cuenta nueva?</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">
+        No encontramos ninguna cuenta con el nombre "${esc(nombre)}". Si ya tienes cuenta,
+        cancela y revisa cómo escribiste tu nombre la primera vez.
+      </p>
+      <div class="fila-botones">
+        <button type="button" id="cc-crear">Sí, crear cuenta "${esc(nombre)}"</button>
+        <button type="button" class="secundario" id="cc-cancelar">Cancelar</button>
+      </div>
+    `);
+    modal.querySelector("#cc-crear").addEventListener("click", () => { cerrar(); resolve(true); });
+    modal.querySelector("#cc-cancelar").addEventListener("click", () => { cerrar(); resolve(false); });
+  });
+}
+
 document.getElementById("btn-entrar").addEventListener("click", async () => {
   const nombre = document.getElementById("campo-nombre").value;
   const contrasena = document.getElementById("campo-contrasena").value;
   const errorEl = document.getElementById("error-login");
   errorEl.textContent = "";
+  if (!nombre.trim() || !contrasena) {
+    errorEl.textContent = "Escribe tu nombre y tu contraseña.";
+    return;
+  }
   try {
+    await asegurarAuthAnonima();
+    if (!(await existeCuenta(nombre))) {
+      const confirmado = await confirmarCrearCuenta(nombre.trim());
+      if (!confirmado) return;
+    }
     const sesion = await iniciarSesion(nombre, contrasena);
     if (claveUnirseURL) {
       await unirseYAbrir(sesion, claveUnirseURL);
@@ -87,6 +116,10 @@ document.getElementById("btn-entrar").addEventListener("click", async () => {
   } catch (e) {
     errorEl.textContent = e.message;
   }
+});
+
+document.getElementById("btn-mi-contrasena").addEventListener("click", () => {
+  abrirModalCambiarContrasena(obtenerSesion());
 });
 
 document.getElementById("campo-contrasena").addEventListener("keydown", e => {
@@ -127,7 +160,7 @@ document.getElementById("btn-crear-viaje").addEventListener("click", () => {
       participantes: { [sesion.userId]: { rol: "admin", nombre: sesion.nombre } }
     });
     await db.ref(`usuarios/${sesion.userId}/viajesInvitado/${nuevaRef.key}`).set(true);
-    // El resto (fechas, zona horaria, ciudades…) se llena en la pestaña Generales del viaje.
+    // El resto (fechas, zona horaria, ciudades…) se llena en las pestañas Info/Ciudades del viaje.
     window.location.href = `viaje.html?trip=${encodeURIComponent(nuevaRef.key)}`;
   });
 });

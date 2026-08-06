@@ -1,11 +1,13 @@
 // Vista "Calendario": cuadrícula días x horas con doble zona horaria,
 // bloques flotantes (lugares) arrastrables/redimensionables (incluso entre
 // días) y fijado, traslados/hospedajes como bloques fijos, y prevención de
-// traslapes. La ciudad de cada día se asigna en la pestaña "Ciudades"
-// (vista-ciudades.js) — aquí solo se lee esa asignación.
+// traslapes. La ciudad de cada día se asigna en la pestaña "Ruta"
+// (vista-ruta.js) — aquí solo se lee esa asignación.
 //
 // La misma función sirve para la vista "Calendario" (todos los días) y para
 // "Agenda" (un solo día con navegación prev/next) — ver opciones.modoAgenda.
+// montarVistaAgendaCalendario (al final del archivo) las fusiona en una sola
+// pestaña con un switch Día/Cuadrícula.
 
 const HORA_PX = 44;
 const COLORES_CIUDAD = ["--color-ciudad-1", "--color-ciudad-2", "--color-ciudad-3", "--color-ciudad-4", "--color-ciudad-5", "--color-ciudad-6"];
@@ -547,9 +549,9 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     });
     // Deja pegado el encabezado (día, ciudad y flechas) justo debajo de las
     // pestañas al hacer scroll hacia abajo.
-    const tabsEl = document.querySelector(".tabs");
+    const navViajeEl = document.getElementById("nav-viaje");
     const navEl = contenedor.querySelector(".cal-agenda-nav");
-    if (tabsEl && navEl) navEl.style.top = `${tabsEl.getBoundingClientRect().height}px`;
+    if (navViajeEl && navEl) navEl.style.top = `${navViajeEl.getBoundingClientRect().height}px`;
     // Deslizar a la izquierda/derecha sobre el área del día para navegar.
     const scrollEl = contenedor.querySelector(".cal-scroll");
     let inicioX = null, inicioY = null;
@@ -581,4 +583,43 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     cancelarInfo(); cancelarCiudades(); cancelarLugares();
     cancelarItinerario(); cancelarTraslados(); cancelarHospedajes(); cancelarCiudadPorDia();
   };
+}
+
+// Fusiona Agenda (un día) y Calendario (cuadrícula completa) en una sola
+// pestaña con un switch — son la misma vista, solo cambia modoAgenda.
+const MODO_AGENDA_KEY = "planeador_modo_agenda";
+
+async function montarVistaAgendaCalendario(contenedor, tripId, sesion) {
+  let modo = localStorage.getItem(MODO_AGENDA_KEY) === "cuadricula" ? "cuadricula" : "agenda";
+  let limpiarInterno = null;
+
+  contenedor.innerHTML = `
+    <div class="segmentado" id="ac-switch">
+      <button type="button" data-modo="agenda">Día</button>
+      <button type="button" data-modo="cuadricula">Cuadrícula</button>
+    </div>
+    <div id="ac-contenido"></div>
+  `;
+  const contenidoInterno = contenedor.querySelector("#ac-contenido");
+  const botones = contenedor.querySelectorAll("#ac-switch button");
+
+  async function montarModo() {
+    botones.forEach(b => b.classList.toggle("activo", b.dataset.modo === modo));
+    if (limpiarInterno) { limpiarInterno(); limpiarInterno = null; }
+    limpiar(contenidoInterno);
+    limpiarInterno = await montarVistaCalendario(contenidoInterno, tripId, sesion, { modoAgenda: modo === "agenda" });
+  }
+
+  botones.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.modo === modo) return;
+      modo = btn.dataset.modo;
+      localStorage.setItem(MODO_AGENDA_KEY, modo);
+      montarModo();
+    });
+  });
+
+  await montarModo();
+
+  return () => { if (limpiarInterno) limpiarInterno(); };
 }

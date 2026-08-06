@@ -11,16 +11,33 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
 - Cada pantalla (`index.html`, `viaje.html`) carga los mismos scripts base
   (`firebase-config.js`, `render-utils.js`, `db.js`, `auth.js`) y luego los scripts de vista
   que necesita.
-- `viaje.html` es un shell con tabs; cada vista (`js/vista-*.js`) expone una función
-  `montarVistaX(contenedor, tripId, sesion)` que:
+- `viaje.html` es un shell con **dos niveles de navegación**: un switcher de grupo
+  ("En el viaje" / "Planeación", `#grupo-switch`) y, debajo, los tabs del grupo activo
+  (`#tabs-viaje`), ambos dentro de `#nav-viaje` (sticky). El mapa `grupos` en el script
+  inline de `viaje.html` define qué vistas van en cada grupo. Cada vista (`js/vista-*.js`)
+  expone una función `montarVistaX(contenedor, tripId, sesion)` que:
   1. Pinta su HTML en `contenedor`.
   2. Se suscribe a los nodos de Firebase que necesita con `escuchar()` (de `db.js`).
   3. Devuelve una función de limpieza que cancela esos listeners — `viaje.html` la llama
      al cambiar de tab. **Nunca dejes un listener de Firebase sin su función de limpieza.**
-- `vista-calendario.js` sirve tanto la pestaña "Calendario" como "Agenda" (un solo día) vía
-  `montarVistaCalendario(contenedor, tripId, sesion, { modoAgenda })`. Define globals
-  (`HORA_PX`, `COLORES_CIUDAD`, `colorCss`, `listaDeDias`) que `vista-ciudades.js` reutiliza —
-  por eso `vista-calendario.js` debe cargarse antes que `vista-ciudades.js` en `viaje.html`.
+- Tabs de **"En el viaje"** (uso diario, durante el viaje): Agenda (fusiona Agenda y
+  Calendario, ver abajo) y Checklist. Tabs de **"Planeación"** (captura mayormente antes
+  de salir): Info, Ciudades, Ruta, Logística, Lugares.
+- `vista-calendario.js` define `montarVistaCalendario(contenedor, tripId, sesion,
+  { modoAgenda })` (cuadrícula completa o un solo día) y, al final del archivo,
+  `montarVistaAgendaCalendario(contenedor, tripId, sesion)` — el wrapper que fusiona ambas
+  en una sola pestaña con un switch "Día/Cuadrícula" (`.segmentado`), y es lo que se monta
+  en el tab "Agenda". También define globals (`HORA_PX`, `COLORES_CIUDAD`, `colorCss`,
+  `listaDeDias`) que `vista-ruta.js` reutiliza — por eso `vista-calendario.js` debe
+  cargarse antes que `vista-ruta.js` en `viaje.html`.
+- **No confundir `vista-ciudades.js` con `vista-ruta.js`**: `vista-ciudades.js` (tab
+  "Ciudades") es el catálogo de ciudades del viaje (nombre/zona horaria/coordenadas);
+  `vista-ruta.js` (tab "Ruta") asigna cuál de esas ciudades corresponde a cada día
+  (`ciudadPorDia`) — antes ambas cosas coexistían bajo el nombre "Ciudades" y era
+  ambiguo, se separaron a propósito en la reestructura de v18.
+- `vista-logistica.js` (tab "Logística") fusiona lo que antes eran las secciones
+  "Traslados" y "Hospedajes" de la vieja pestaña "Generales" (ya no existe como tal —
+  ver `vista-info.js`, `vista-ciudades.js`, `vista-ruta.js`, `vista-logistica.js`).
 
 ## Modelo de datos (Firebase Realtime Database)
 
@@ -49,7 +66,10 @@ viajes/{tripId}:
   // zonaDeNombreCiudad(nombre), es decir la hora LOCAL de esa ciudad concreta —
   // nunca con info.zonaOrigen a menos que esa ciudad sea justo la de origen. No
   // reintroduzcas "zona = infoCache.zonaOrigen" como default para estas horas.
-  checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden }
+  checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden, categoria }
+  // categoria: "empaque" (antes de viajar) | "viaje" (durante el viaje) — sin categoria
+  // se trata como "empaque" (ítems de antes de que existiera el campo). El orden es
+  // independiente por categoría (ambas se ordenan/filtran por separado en la UI).
   participantes/{userId}: { rol: "admin" | "participante", nombre }
 ```
 
@@ -57,6 +77,13 @@ viajes/{tripId}:
 `auth != null` se cumpla en las reglas. La identidad real de la persona (con la que se
 filtran sus viajes, se marca el checklist, etc.) es `sesion.userId`, resuelta en el login
 vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos conceptos.
+
+**Contraseña**: `usuarios/{userId}/passwordHash` se puede cambiar de dos formas —
+`cambiarContrasenaPropia(userId, actual, nueva)` (verifica la actual) desde el botón
+"🔑 Contraseña"/"🔑 Cambiar mi contraseña" (index.html y tab Info), o
+`restablecerContrasena(userId, nueva)` (sin verificar, solo lo ofrece la UI a un admin
+del viaje sobre otro participante, en la tab Info) — no existe recuperación por email
+porque no hay backend propio ni dirección de correo capturada.
 
 ## Invariantes y convenciones
 
@@ -83,6 +110,12 @@ vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos con
   `formatoHora()` / `formatoFecha()` (`render-utils.js`). Para ir de "fecha+hora local" a
   UTC al guardar, usa `localAUTC()` — no construyas el ISO a mano sumando/restando horas,
   los offsets de DST varían por zona y fecha.
+- **Toda escritura a Firebase pasa por `agregar()`/`actualizar()`/`eliminar()`/
+  `actualizarMultiple()` de `db.js`**, nunca `ref.set()`/`ref.update()` directo desde una
+  vista — esos helpers disparan `mostrarToast()` (`render-utils.js`) para dar confirmación
+  visual de "Guardado ✓"/"Agregado ✓"/"Eliminado". Escribir directo con `ref.update()`
+  (como se hacía antes en la vieja `vista-generales.js`) deja al usuario sin esa
+  confirmación.
 - **Un render por frame**: usa `programarRender()` (`db.js`) para envolver el callback de
   cualquier vista que escuche varios nodos — evita repintar N veces si Firebase entrega
   varios `value` seguidos.

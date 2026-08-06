@@ -83,6 +83,24 @@ function limpiar(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
 
+// Confirmación visual breve de "esto ya se guardó" — se llama desde db.js
+// después de cada escritura exitosa a Firebase. Reutiliza un solo elemento
+// y reinicia su temporizador en cada llamada, para no apilar mensajes si
+// hay varias escrituras seguidas (p.ej. arrastrar un bloque del calendario).
+let temporizadorToast = null;
+function mostrarToast(mensaje) {
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = mensaje;
+  el.classList.add("mostrar");
+  clearTimeout(temporizadorToast);
+  temporizadorToast = setTimeout(() => el.classList.remove("mostrar"), 1600);
+}
+
 // Modal genérico: reemplaza a prompt()/confirm() para captura de datos.
 // contenidoHTML debe incluir su propio <form id="..."> con los campos.
 // Se cierra solo al hacer click fuera, con la tecla Escape, o llamando a cerrar().
@@ -98,6 +116,39 @@ function abrirModal(contenidoHTML) {
   document.addEventListener("keydown", escuchaEscape);
 
   return { fondo, modal: fondo.querySelector(".modal"), cerrar };
+}
+
+// Modal de "cambiar mi contraseña" — compartido entre index.html
+// (vista-admin-viajes.js) y viaje.html (vista-info.js). Requiere auth.js
+// (cambiarContrasenaPropia) ya cargado.
+function abrirModalCambiarContrasena(sesion) {
+  const { modal, cerrar } = abrirModal(`
+    <h3>Cambiar mi contraseña</h3>
+    <form id="form-mi-contrasena">
+      <label for="mc-actual">Contraseña actual</label>
+      <input id="mc-actual" type="password" required autofocus autocomplete="current-password">
+      <label for="mc-nueva">Contraseña nueva</label>
+      <input id="mc-nueva" type="password" required autocomplete="new-password">
+      <div class="error" id="mc-error"></div>
+      <div class="fila-botones">
+        <button type="submit">Guardar</button>
+        <button type="button" class="secundario" id="mc-cancelar">Cancelar</button>
+      </div>
+    </form>
+  `);
+  modal.querySelector("#mc-cancelar").addEventListener("click", cerrar);
+  modal.querySelector("#form-mi-contrasena").addEventListener("submit", async e => {
+    e.preventDefault();
+    const actual = modal.querySelector("#mc-actual").value;
+    const nueva = modal.querySelector("#mc-nueva").value;
+    if (!actual || !nueva) return;
+    try {
+      await cambiarContrasenaPropia(sesion.userId, actual, nueva);
+      cerrar();
+    } catch (err) {
+      modal.querySelector("#mc-error").textContent = err.message;
+    }
+  });
 }
 
 // Lista de zonas horarias IANA soportadas por el navegador, para usarse en <select>

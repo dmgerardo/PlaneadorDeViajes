@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Historial de cambios — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=17">
+<link rel="stylesheet" href="css/estilos.css?v=18">
 </head>
 <body>
   <div class="contenedor">
@@ -14,6 +14,24 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v18 — Reestructura de navegación, checklist con categorías y varios fixes de UX</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Nueva navegación:</strong> switcher "En el viaje" / "Planeación" arriba de los tabs. "En el viaje" agrupa lo que se usa a diario (Agenda, Checklist); "Planeación" agrupa lo que se captura sobre todo antes de salir (Info, Ciudades, Ruta, Logística, Lugares).</li>
+        <li>La vieja pestaña "Generales" se separó en <strong>Info</strong> (fechas/origen/participantes), <strong>Ciudades</strong> (catálogo) y <strong>Logística</strong> (traslados + hospedajes fusionados).</li>
+        <li>La vieja pestaña "Ciudades" (asignar la ciudad de cada día) se renombró a <strong>Ruta</strong>, para no confundirla con el catálogo de ciudades — antes ambas se llamaban "Ciudades".</li>
+        <li><strong>Agenda y Calendario se fusionaron</strong> en una sola pestaña con un switch Día/Cuadrícula — son la misma información, solo cambiaba la forma de verla.</li>
+        <li><strong>Checklist con dos categorías:</strong> "Antes de viajar" (empaque) y "Durante el viaje" (pendientes tipo trámites/reservas), con su propio switch.</li>
+        <li><strong>Corregido:</strong> en la lista de Traslados/Hospedajes (ahora en Logística) las horas se mostraban en UTC crudo en vez de la hora local de la ciudad correspondiente.</li>
+        <li>Nuevo: cambiar la propia contraseña, y que un admin del viaje pueda restablecer la de otro participante que la haya olvidado (no hay recuperación por correo, no hay backend propio).</li>
+        <li>Nuevo: confirmación antes de crear una cuenta con un nombre que no existía, para no dar de alta una cuenta duplicada por un error de dedo.</li>
+        <li>Nuevo: confirmación visual ("Guardado ✓"/"Agregado ✓"/"Eliminado") después de cada escritura a Firebase.</li>
+        <li>Letra más grande en la cuadrícula de Calendario/Agenda (horas, títulos de bloque, encabezados de día), para leerla mejor con luz de sol.</li>
+        <li>Colores del <code>manifest.json</code> corregidos para que coincidan con la paleta real de la app al instalarla como app.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v17 — Check-in/check-out en hora local, no de origen</h3>
@@ -163,6 +181,6 @@
       </ul>
     </div>
   </div>
-  <script src="js/version.js?v=17"></script>
+  <script src="js/version.js?v=18"></script>
 </body>
 </html>

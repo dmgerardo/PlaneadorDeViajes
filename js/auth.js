@@ -83,3 +83,30 @@ async function requerirSesion() {
   await asegurarAuthAnonima();
   return sesion;
 }
+
+// ¿Ya existe una cuenta con este nombre? Se usa antes de iniciar sesión para
+// avisar si se está a punto de crear una cuenta nueva por error (typo en el
+// nombre), en vez de dar de alta en silencio.
+async function existeCuenta(nombre) {
+  const clave = normalizarClave(nombre);
+  const snap = await db.ref(`identidades/${clave}`).get();
+  return snap.exists();
+}
+
+// Cambiar la propia contraseña, verificando primero la actual.
+async function cambiarContrasenaPropia(userId, actual, nueva) {
+  const snap = await db.ref(`usuarios/${userId}`).get();
+  const usuario = snap.val();
+  const hashActual = await hashTexto(actual);
+  if (!usuario || usuario.passwordHash !== hashActual) {
+    throw new Error("Tu contraseña actual no es correcta.");
+  }
+  await actualizar(db.ref(`usuarios/${userId}`), { passwordHash: await hashTexto(nueva) });
+}
+
+// Restablecer la contraseña de otro participante (solo lo ofrece la UI a un
+// admin del viaje) — no requiere conocer la contraseña anterior, porque es
+// justo el caso de "la olvidé por completo y no hay email para recuperarla".
+async function restablecerContrasena(userId, nueva) {
+  await actualizar(db.ref(`usuarios/${userId}`), { passwordHash: await hashTexto(nueva) });
+}

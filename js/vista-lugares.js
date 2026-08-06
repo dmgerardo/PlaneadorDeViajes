@@ -122,7 +122,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
     const existente = idExistente ? lugaresCache[idExistente] : null;
     const idsCiudades = Object.keys(ciudadesCache);
     if (idsCiudades.length === 0) {
-      alert("Primero agrega al menos una ciudad en la pestaña Generales.");
+      alert("Primero agrega al menos una ciudad en la pestaña Ciudades.");
       return;
     }
 

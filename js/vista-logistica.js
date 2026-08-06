@@ -1,31 +1,19 @@
-// Vista "Generales": fechas, ciudades, traslados/hospedajes pactados,
-// invitar participantes y promover admin.
+// Vista "Logística": traslados (vuelos/trenes/bus/auto) y hospedajes
+// pactados para el viaje. Las horas de cada uno se muestran siempre en la
+// hora LOCAL de la ciudad correspondiente (nunca en UTC ni en la zona de
+// origen del viaje, salvo que esa ciudad sea justo la de origen).
 
-async function montarVistaGenerales(contenedor, tripId, sesion) {
+async function montarVistaLogistica(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
-    <div class="tarjeta" id="g-info"></div>
-    <div class="tarjeta">
-      <h3>Ciudades</h3>
-      <div id="g-ciudades"></div>
-      <button id="g-btn-ciudad">+ Agregar ciudad</button>
-    </div>
     <div class="tarjeta">
       <h3>Traslados</h3>
-      <div id="g-traslados"></div>
-      <button id="g-btn-traslado">+ Agregar traslado</button>
+      <div id="lg-traslados"></div>
+      <button id="lg-btn-traslado">+ Agregar traslado</button>
     </div>
     <div class="tarjeta">
       <h3>Hospedajes</h3>
-      <div id="g-hospedajes"></div>
-      <button id="g-btn-hospedaje">+ Agregar hospedaje</button>
-    </div>
-    <div class="tarjeta">
-      <h3>Participantes</h3>
-      <div id="g-participantes"></div>
-      <p style="font-size:12px;color:var(--color-texto-suave)">
-        Comparte la liga de invitación de este viaje para que otros se unan directamente.
-      </p>
-      <button class="secundario" id="g-btn-copiar-liga">🔗 Copiar liga de invitación</button>
+      <div id="lg-hospedajes"></div>
+      <button id="lg-btn-hospedaje">+ Agregar hospedaje</button>
     </div>
   `;
 
@@ -33,28 +21,11 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
   const refCiudades = refNodo(tripId, "ciudades");
   const refTraslados = refNodo(tripId, "traslados");
   const refHospedajes = refNodo(tripId, "hospedajes");
-  const refParticipantes = refNodo(tripId, "participantes");
 
+  let infoCache = {};
   let ciudadesCache = {};
   let trasladosCache = {};
   let hospedajesCache = {};
-  let infoCache = {};
-
-  function sumarDias(fechaStr, dias) {
-    const fecha = new Date(`${fechaStr}T00:00:00Z`);
-    fecha.setUTCDate(fecha.getUTCDate() + dias);
-    return fecha.toISOString().slice(0, 10);
-  }
-
-  // Zona horaria de la última ciudad agregada (o la de origen si no hay ninguna) —
-  // se usa como default al agregar la siguiente ciudad/traslado, para no tener que
-  // buscarla de nuevo en la lista de 400+ zonas cada vez.
-  function zonaHorariaSugerida() {
-    const ciudades = Object.values(ciudadesCache);
-    if (ciudades.length === 0) return infoCache.zonaOrigen || "America/Mexico_City";
-    const ultima = ciudades.sort((a, b) => (b.orden || 0) - (a.orden || 0))[0];
-    return ultima.zonaHoraria;
-  }
 
   // Atributos min/max para <input type="date"> — mantiene la captura dentro del
   // rango de fechas del viaje si ya está definido.
@@ -64,10 +35,10 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     return min + max;
   }
 
-  // Ciudades disponibles para elegir como origen/destino de un traslado:
-  // la ciudad de origen del viaje + todas las ciudades capturadas. Si el
-  // valor actual (al editar) ya no está en ninguna de las dos, se conserva
-  // como opción extra para no perder el dato.
+  // Ciudades disponibles para elegir como origen/destino de un traslado o
+  // ciudad de un hospedaje: la ciudad de origen del viaje + todas las
+  // capturadas. Si el valor actual (al editar) ya no está en ninguna de las
+  // dos, se conserva como opción extra para no perder el dato.
   function nombresCiudadesTraslado(valorActual) {
     const nombres = [];
     if (infoCache.ciudadOrigen) nombres.push(infoCache.ciudadOrigen);
@@ -85,8 +56,9 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
 
   // Zona horaria real de una ciudad por nombre (la de origen del viaje, o
   // alguna de "ciudades"). Check-in/check-out y horas de traslados SIEMPRE se
-  // calculan en la hora LOCAL de la ciudad correspondiente, nunca en la de
-  // origen del viaje salvo que justo esa sea la ciudad en cuestión.
+  // calculan y se MUESTRAN en la hora LOCAL de la ciudad correspondiente,
+  // nunca en la de origen del viaje salvo que justo esa sea la ciudad en
+  // cuestión, y nunca en UTC crudo.
   function zonaDeNombreCiudad(nombre) {
     if (!nombre) return infoCache.zonaOrigen || "America/Mexico_City";
     if (nombre === infoCache.ciudadOrigen) return infoCache.zonaOrigen || "America/Mexico_City";
@@ -94,79 +66,17 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     return ciudad ? ciudad.zonaHoraria : (infoCache.zonaOrigen || "America/Mexico_City");
   }
 
-  const renderInfo = programarRender(info => {
-    infoCache = info;
-    const el = document.getElementById("g-info");
-    if (!el) return;
-    el.innerHTML = `
-      <h2>${esc(info.nombre || "Viaje")}</h2>
-      <label>Fecha inicio</label>
-      <input id="g-fecha-inicio" type="date" value="${esc(info.fechaInicio || "")}">
-      <label>Fecha fin</label>
-      <input id="g-fecha-fin" type="date" value="${esc(info.fechaFin || "")}" min="${esc(info.fechaInicio || "")}">
-      <label>Ciudad de origen</label>
-      <input id="g-ciudad-origen" type="text" placeholder="Ej. CDMX" value="${esc(info.ciudadOrigen || "")}">
-      <label>Zona horaria de origen</label>
-      <select id="g-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
-      <label>Clave de invitación</label>
-      <input type="text" value="${esc(info.claveInvitacion || "")}" readonly>
-    `;
-    document.getElementById("g-fecha-inicio").addEventListener("change", e => {
-      const fechaInicio = e.target.value;
-      const actualizacion = { fechaInicio };
-      document.getElementById("g-fecha-fin").min = fechaInicio;
-      // Si no hay fecha fin capturada, la proponemos como un día después.
-      if (fechaInicio && !infoCache.fechaFin) {
-        const fechaFinDefault = sumarDias(fechaInicio, 1);
-        document.getElementById("g-fecha-fin").value = fechaFinDefault;
-        actualizacion.fechaFin = fechaFinDefault;
-      }
-      refInfo.update(actualizacion);
-    });
-    document.getElementById("g-fecha-fin").addEventListener("change", e => refInfo.update({ fechaFin: e.target.value }));
-    document.getElementById("g-ciudad-origen").addEventListener("change", e => refInfo.update({ ciudadOrigen: e.target.value.trim() }));
-    document.getElementById("g-zona-origen").addEventListener("change", e => refInfo.update({ zonaOrigen: e.target.value }));
-  });
-
-  const renderCiudades = programarRender(ciudades => {
-    ciudadesCache = ciudades;
-    const el = document.getElementById("g-ciudades");
+  const renderTraslados = programarRender(() => {
+    const el = document.getElementById("lg-traslados");
     if (!el) return;
     limpiar(el);
-    const ordenadas = Object.entries(ciudades).sort((a, b) => (a[1].orden || 0) - (b[1].orden || 0));
-    if (ordenadas.length === 0) {
-      el.innerHTML = '<p style="color:var(--color-texto-suave)">Sin ciudades todavía.</p>';
-      return;
-    }
-    ordenadas.forEach(([id, c]) => {
-      const fila = document.createElement("div");
-      fila.className = "lista-item";
-      fila.innerHTML = `
-        <div><strong>${esc(c.nombre)}</strong><br><span style="font-size:12px;color:var(--color-texto-suave)">${esc(c.zonaHoraria)}</span></div>
-        <div class="fila-botones" style="margin:0;">
-          <button class="texto" data-accion="editar">Editar</button>
-          <button class="texto" data-accion="quitar">Quitar</button>
-        </div>
-      `;
-      fila.querySelector('[data-accion="editar"]').addEventListener("click", () => abrirFormularioCiudad(id));
-      fila.querySelector('[data-accion="quitar"]').addEventListener("click", async () => {
-        if (confirm(`¿Quitar ciudad "${c.nombre}"?`)) await eliminar(refCiudades.child(id));
-      });
-      el.appendChild(fila);
-    });
-  });
-
-  const renderTraslados = programarRender(traslados => {
-    trasladosCache = traslados;
-    const el = document.getElementById("g-traslados");
-    if (!el) return;
-    limpiar(el);
-    const entradas = Object.entries(traslados);
+    const entradas = Object.entries(trasladosCache);
     if (entradas.length === 0) {
       el.innerHTML = '<p style="color:var(--color-texto-suave)">Sin traslados todavía.</p>';
       return;
     }
     entradas.forEach(([id, t]) => {
+      const zonaSalida = zonaDeNombreCiudad(t.origen);
       const duracion = t.finUTC ? formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC)) : "";
       const fila = document.createElement("div");
       fila.className = "lista-item";
@@ -174,7 +84,7 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
         <div>
           <strong>${esc(t.tipo)} — ${esc(t.origen)} → ${esc(t.destino)}</strong><br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
-            ${esc(formatoFecha(t.inicioUTC, "UTC"))} ${esc(formatoHora(t.inicioUTC, "UTC"))} UTC
+            ${esc(formatoFecha(t.inicioUTC, zonaSalida))} ${esc(formatoHora(t.inicioUTC, zonaSalida))} hora de ${esc(t.origen)}
             ${duracion ? ` · Duración: ${esc(duracion)}` : ""} ·
             Confirmación: ${esc(t.confirmacion || "-")}
           </span>
@@ -192,25 +102,25 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
     });
   });
 
-  const renderHospedajes = programarRender(hospedajes => {
-    hospedajesCache = hospedajes;
-    const el = document.getElementById("g-hospedajes");
+  const renderHospedajes = programarRender(() => {
+    const el = document.getElementById("lg-hospedajes");
     if (!el) return;
     limpiar(el);
-    const entradas = Object.entries(hospedajes);
+    const entradas = Object.entries(hospedajesCache);
     if (entradas.length === 0) {
       el.innerHTML = '<p style="color:var(--color-texto-suave)">Sin hospedajes todavía.</p>';
       return;
     }
     entradas.forEach(([id, h]) => {
+      const zona = zonaDeNombreCiudad(h.ciudad);
       const fila = document.createElement("div");
       fila.className = "lista-item";
       fila.innerHTML = `
         <div>
           <strong>${esc(h.nombre)}</strong>${h.ciudad ? ` <span style="font-weight:400;">— ${esc(h.ciudad)}</span>` : ""}<br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
-            Check-in: ${esc(formatoFecha(h.checkinUTC, "UTC"))}
-            ${h.checkoutUTC ? ` · Check-out: ${esc(formatoFecha(h.checkoutUTC, "UTC"))}` : ""}
+            Check-in: ${esc(formatoFecha(h.checkinUTC, zona))}
+            ${h.checkoutUTC ? ` · Check-out: ${esc(formatoFecha(h.checkoutUTC, zona))}` : ""}
             ${h.noches ? ` · ${h.noches} noche${h.noches > 1 ? "s" : ""}` : ""} ·
             Confirmación: ${esc(h.claveReservacion || "-")}
           </span>
@@ -227,95 +137,6 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       el.appendChild(fila);
     });
   });
-
-  const renderParticipantes = programarRender(participantes => {
-    const el = document.getElementById("g-participantes");
-    if (!el) return;
-    limpiar(el);
-    Object.entries(participantes).forEach(([userId, p]) => {
-      const fila = document.createElement("div");
-      fila.className = "lista-item";
-      const esAdmin = p.rol === "admin";
-      fila.innerHTML = `
-        <div><strong>${esc(p.nombre)}</strong> ${esAdmin ? '<span class="chip importante">admin</span>' : ""}</div>
-        ${esAdmin ? "" : `<button class="texto" data-id="${esc(userId)}">Hacer admin</button>`}
-      `;
-      const btn = fila.querySelector("button");
-      if (btn) {
-        btn.addEventListener("click", async () => {
-          await actualizar(refParticipantes.child(userId), { rol: "admin" });
-        });
-      }
-      el.appendChild(fila);
-    });
-  });
-
-  document.getElementById("g-btn-copiar-liga").addEventListener("click", async () => {
-    const clave = infoCache.claveInvitacion;
-    if (!clave) return;
-    const liga = new URL(`index.html?unirse=${encodeURIComponent(clave)}`, window.location.href).toString();
-    const boton = document.getElementById("g-btn-copiar-liga");
-    try {
-      await navigator.clipboard.writeText(liga);
-      const textoOriginal = boton.textContent;
-      boton.textContent = "✅ Copiada";
-      setTimeout(() => { boton.textContent = textoOriginal; }, 1800);
-    } catch (e) {
-      const { modal, cerrar } = abrirModal(`
-        <h3>Liga de invitación</h3>
-        <p style="font-size:13px;color:var(--color-texto-suave)">No se pudo copiar automáticamente. Selecciona y copia el texto:</p>
-        <input type="text" value="${esc(liga)}" readonly onclick="this.select()">
-        <div class="fila-botones"><button type="button" id="li-cerrar">Cerrar</button></div>
-      `);
-      modal.querySelector("#li-cerrar").addEventListener("click", cerrar);
-      modal.querySelector("input").select();
-    }
-  });
-
-  // --- Ciudad: agregar o editar (idExistente indica modo edición) ---
-  function abrirFormularioCiudad(idExistente) {
-    const existente = idExistente ? ciudadesCache[idExistente] : null;
-    const { modal, cerrar } = abrirModal(`
-      <h3>${existente ? "Editar ciudad" : "Agregar ciudad"}</h3>
-      <form id="form-ciudad">
-        <label for="fc-nombre">Nombre</label>
-        <input id="fc-nombre" type="text" placeholder="Ej. Nueva York" required autofocus value="${esc(existente ? existente.nombre : "")}">
-        <label for="fc-zona">Zona horaria</label>
-        <select id="fc-zona" required>${opcionesZonaHoraria(existente ? existente.zonaHoraria : zonaHorariaSugerida())}</select>
-        <label for="fc-lat">Coordenadas (opcional — para sombrear la noche real en el calendario)</label>
-        <div style="display:flex;gap:8px;">
-          <input id="fc-lat" type="number" step="any" min="-90" max="90" placeholder="Latitud" value="${esc(existente && existente.lat != null ? existente.lat : "")}">
-          <input id="fc-lng" type="number" step="any" min="-180" max="180" placeholder="Longitud" value="${esc(existente && existente.lng != null ? existente.lng : "")}">
-        </div>
-        <p style="font-size:11px;color:var(--color-texto-suave);margin:4px 0 0;">Búscalas en Google Maps: clic derecho sobre el mapa → el primer número es la latitud, el segundo la longitud.</p>
-        <div class="fila-botones">
-          <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
-          <button type="button" class="secundario" id="fc-cancelar">Cancelar</button>
-        </div>
-      </form>
-    `);
-    modal.querySelector("#fc-cancelar").addEventListener("click", cerrar);
-    modal.querySelector("#form-ciudad").addEventListener("submit", async e => {
-      e.preventDefault();
-      const nombre = modal.querySelector("#fc-nombre").value.trim();
-      const zonaHoraria = modal.querySelector("#fc-zona").value;
-      const latTxt = modal.querySelector("#fc-lat").value.trim();
-      const lngTxt = modal.querySelector("#fc-lng").value.trim();
-      if (!nombre || !zonaHoraria) return;
-      const datos = { nombre, zonaHoraria };
-      // null (no undefined) para poder borrar coordenadas ya capturadas al editar.
-      datos.lat = latTxt ? Number(latTxt) : null;
-      datos.lng = lngTxt ? Number(lngTxt) : null;
-      if (existente) {
-        await actualizar(refCiudades.child(idExistente), datos);
-      } else {
-        datos.orden = Object.keys(ciudadesCache).length;
-        await agregar(refCiudades, datos);
-      }
-      cerrar();
-    });
-  }
-  document.getElementById("g-btn-ciudad").addEventListener("click", () => abrirFormularioCiudad(null));
 
   // --- Traslado: agregar o editar ---
   function abrirFormularioTraslado(idExistente) {
@@ -389,9 +210,9 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       cerrar();
     });
   }
-  document.getElementById("g-btn-traslado").addEventListener("click", () => {
+  document.getElementById("lg-btn-traslado").addEventListener("click", () => {
     if (nombresCiudadesTraslado(null).length === 0) {
-      alert("Primero captura la ciudad de origen (arriba) o agrega al menos una ciudad.");
+      alert("Primero captura la ciudad de origen (pestaña Info) o agrega al menos una ciudad.");
       return;
     }
     abrirFormularioTraslado(null);
@@ -439,22 +260,24 @@ async function montarVistaGenerales(contenedor, tripId, sesion) {
       cerrar();
     });
   }
-  document.getElementById("g-btn-hospedaje").addEventListener("click", () => {
+  document.getElementById("lg-btn-hospedaje").addEventListener("click", () => {
     if (nombresCiudadesTraslado(null).length === 0) {
-      alert("Primero captura la ciudad de origen (arriba) o agrega al menos una ciudad.");
+      alert("Primero captura la ciudad de origen (pestaña Info) o agrega al menos una ciudad.");
       return;
     }
     abrirFormularioHospedaje(null);
   });
 
-  const cancelarInfo = escuchar(refInfo, renderInfo);
-  const cancelarCiudades = escuchar(refCiudades, renderCiudades);
-  const cancelarTraslados = escuchar(refTraslados, renderTraslados);
-  const cancelarHospedajes = escuchar(refHospedajes, renderHospedajes);
-  const cancelarParticipantes = escuchar(refParticipantes, renderParticipantes);
+  function sumarDias(fechaStr, dias) {
+    const fecha = new Date(`${fechaStr}T00:00:00Z`);
+    fecha.setUTCDate(fecha.getUTCDate() + dias);
+    return fecha.toISOString().slice(0, 10);
+  }
 
-  return () => {
-    cancelarInfo(); cancelarCiudades(); cancelarTraslados();
-    cancelarHospedajes(); cancelarParticipantes();
-  };
+  const cancelarInfo = escuchar(refInfo, v => { infoCache = v; renderTraslados(); renderHospedajes(); });
+  const cancelarCiudades = escuchar(refCiudades, v => { ciudadesCache = v; renderTraslados(); renderHospedajes(); });
+  const cancelarTraslados = escuchar(refTraslados, v => { trasladosCache = v; renderTraslados(); });
+  const cancelarHospedajes = escuchar(refHospedajes, v => { hospedajesCache = v; renderHospedajes(); });
+
+  return () => { cancelarInfo(); cancelarCiudades(); cancelarTraslados(); cancelarHospedajes(); };
 }

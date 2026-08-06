@@ -7,18 +7,18 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>Viaje — Planeador</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/estilos.css?v=17">
+<link rel="stylesheet" href="css/estilos.css?v=18">
 </head>
 <body>
-  <div class="tabs">
-    <button class="texto" id="btn-volver" style="flex:0 0 auto;">← Viajes</button>
-    <button data-vista="agenda">Agenda</button>
-    <button data-vista="generales">Generales</button>
-    <button data-vista="lugares">Lugares</button>
-    <button data-vista="ciudades">Ciudades</button>
-    <button data-vista="calendario">Calendario</button>
-    <button data-vista="checklist">Checklist</button>
-    <a href="historial.html" class="version-badge" id="badge-version" style="align-self:center;margin:0 12px 0 auto;flex:0 0 auto;"></a>
+  <div id="nav-viaje">
+    <div class="grupo-switch" id="grupo-switch">
+      <button type="button" data-grupo="viaje">En el viaje</button>
+      <button type="button" data-grupo="planeacion">Planeación</button>
+    </div>
+    <div class="tabs" id="tabs-viaje">
+      <button class="texto" id="btn-volver" style="flex:0 0 auto;">← Viajes</button>
+      <a href="historial.html" class="version-badge" id="badge-version" style="align-self:center;margin:0 12px 0 auto;flex:0 0 auto;"></a>
+    </div>
   </div>
 
   <div class="contenedor" id="contenido-vista">
@@ -28,47 +28,94 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/version.js?v=17"></script>
-  <script src="js/firebase-config.js?v=17"></script>
-  <script src="js/render-utils.js?v=17"></script>
-  <script src="js/db.js?v=17"></script>
-  <script src="js/auth.js?v=17"></script>
-  <script src="js/vista-generales.js?v=17"></script>
-  <script src="js/vista-lugares.js?v=17"></script>
-  <script src="js/vista-calendario.js?v=17"></script>
-  <script src="js/vista-ciudades.js?v=17"></script>
-  <script src="js/vista-checklist.js?v=17"></script>
+  <script src="js/version.js?v=18"></script>
+  <script src="js/firebase-config.js?v=18"></script>
+  <script src="js/render-utils.js?v=18"></script>
+  <script src="js/db.js?v=18"></script>
+  <script src="js/auth.js?v=18"></script>
+  <script src="js/vista-info.js?v=18"></script>
+  <script src="js/vista-ciudades.js?v=18"></script>
+  <script src="js/vista-calendario.js?v=18"></script>
+  <script src="js/vista-ruta.js?v=18"></script>
+  <script src="js/vista-logistica.js?v=18"></script>
+  <script src="js/vista-lugares.js?v=18"></script>
+  <script src="js/vista-checklist.js?v=18"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const tripId = params.get("trip");
     const contenido = document.getElementById("contenido-vista");
     let sesionActual = null;
     let limpiarVistaActual = null;
+    let grupoActual = "viaje";
 
     document.getElementById("btn-volver").addEventListener("click", () => {
       window.location.href = "index.html";
     });
 
-    const vistas = {
-      agenda: (c, t, s) => montarVistaCalendario(c, t, s, { modoAgenda: true }),
-      generales: montarVistaGenerales,
-      lugares: montarVistaLugares,
-      ciudades: montarVistaCiudades,
-      calendario: (c, t, s) => montarVistaCalendario(c, t, s, { modoAgenda: false }),
-      checklist: montarVistaChecklist
+    // Cada grupo del switcher tiene sus propios tabs; "viaje" es lo que se
+    // usa día a día en el destino, "planeacion" es lo que se captura sobre
+    // todo antes de salir (y se ajusta poco durante el viaje).
+    const grupos = {
+      viaje: [
+        { id: "agenda", label: "Agenda", montar: montarVistaAgendaCalendario },
+        { id: "checklist", label: "Checklist", montar: montarVistaChecklist }
+      ],
+      planeacion: [
+        { id: "info", label: "Info", montar: montarVistaInfo },
+        { id: "ciudades", label: "Ciudades", montar: montarVistaCiudades },
+        { id: "ruta", label: "Ruta", montar: montarVistaRuta },
+        { id: "logistica", label: "Logística", montar: montarVistaLogistica },
+        { id: "lugares", label: "Lugares", montar: montarVistaLugares }
+      ]
     };
 
-    async function cambiarVista(nombre) {
-      document.querySelectorAll(".tabs button[data-vista]").forEach(b => {
-        b.classList.toggle("activo", b.dataset.vista === nombre);
-      });
-      if (limpiarVistaActual) { limpiarVistaActual(); limpiarVistaActual = null; }
-      limpiar(contenido);
-      limpiarVistaActual = await vistas[nombre](contenido, tripId, sesionActual);
+    function vistaPorId(id) {
+      for (const grupo of Object.values(grupos)) {
+        const encontrada = grupo.find(v => v.id === id);
+        if (encontrada) return encontrada;
+      }
+      return null;
     }
 
-    document.querySelectorAll(".tabs button[data-vista]").forEach(btn => {
-      btn.addEventListener("click", () => cambiarVista(btn.dataset.vista));
+    function grupoDeVista(id) {
+      for (const [nombreGrupo, tabs] of Object.entries(grupos)) {
+        if (tabs.some(v => v.id === id)) return nombreGrupo;
+      }
+      return "viaje";
+    }
+
+    function pintarTabsDelGrupo(nombreGrupo, idActivo) {
+      const tabsEl = document.getElementById("tabs-viaje");
+      tabsEl.querySelectorAll("button[data-vista]").forEach(b => b.remove());
+      const badge = document.getElementById("badge-version");
+      grupos[nombreGrupo].forEach(v => {
+        const btn = document.createElement("button");
+        btn.dataset.vista = v.id;
+        btn.textContent = v.label;
+        btn.classList.toggle("activo", v.id === idActivo);
+        btn.addEventListener("click", () => cambiarVista(v.id));
+        tabsEl.insertBefore(btn, badge);
+      });
+      document.querySelectorAll("#grupo-switch button").forEach(b => {
+        b.classList.toggle("activo", b.dataset.grupo === nombreGrupo);
+      });
+    }
+
+    async function cambiarVista(id) {
+      const vista = vistaPorId(id);
+      if (!vista) return;
+      grupoActual = grupoDeVista(id);
+      pintarTabsDelGrupo(grupoActual, id);
+      if (limpiarVistaActual) { limpiarVistaActual(); limpiarVistaActual = null; }
+      limpiar(contenido);
+      limpiarVistaActual = await vista.montar(contenido, tripId, sesionActual);
+    }
+
+    document.querySelectorAll("#grupo-switch button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.grupo === grupoActual) return;
+        cambiarVista(grupos[btn.dataset.grupo][0].id);
+      });
     });
 
     (async function inicio() {
@@ -76,9 +123,10 @@
       sesionActual = await requerirSesion();
       if (!sesionActual) return;
 
-      // Si hoy cae dentro de las fechas del viaje, arrancamos en Agenda
-      // (referencia rápida del día); si no, en Generales como siempre.
-      let vistaInicial = "generales";
+      // Si hoy cae dentro de las fechas del viaje, arrancamos en "En el
+      // viaje" → Agenda (referencia rápida del día); si no, en
+      // "Planeación" → Info como siempre.
+      let vistaInicial = "info";
       try {
         const snap = await db.ref(`viajes/${tripId}/info`).get();
         const info = snap.val();
@@ -86,7 +134,7 @@
           const hoy = fechaISO(new Date().toISOString(), info.zonaOrigen || "America/Mexico_City");
           if (hoy >= info.fechaInicio && hoy <= info.fechaFin) vistaInicial = "agenda";
         }
-      } catch (e) { /* si falla la lectura, cae al default "generales" */ }
+      } catch (e) { /* si falla la lectura, cae al default "info" */ }
 
       await cambiarVista(vistaInicial);
     })();

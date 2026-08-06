@@ -1,38 +1,48 @@
+/* Paleta y tipografía tomadas del sistema de diseño "Organic" de la propuesta
+   visual (Claude Design). Solo se retocan tokens/tipografía/formas — los
+   nombres de clase y la estructura HTML no cambiaron. */
+@import url('https://fonts.googleapis.com/css2?family=Caprasimo:wght@400&family=Figtree:wght@400;600;700&display=swap');
+
 :root {
-  --color-fondo: #f5f6f8;
-  --color-superficie: #ffffff;
-  --color-texto: #1a1a1a;
-  --color-texto-suave: #666666;
-  --color-borde: #e0e2e6;
-  --color-primario: #2f6fed;
-  --color-primario-oscuro: #1d4fbf;
-  --color-peligro: #d64550;
-  --color-exito: #3f9142;
+  --color-fondo: #f5ead8;
+  --color-superficie: #ebddc5;
+  --color-texto: #201e1d;
+  --color-texto-suave: color-mix(in srgb, #201e1d 58%, transparent);
+  --color-borde: color-mix(in srgb, #201e1d 16%, transparent);
+  --color-primario: #c67139;
+  --color-primario-oscuro: #8c491a;
+  --color-peligro: #a8402c;
+  --color-exito: #728157;
 
   /* Colores por ciudad (se asignan en orden a medida que se agregan ciudades) */
-  --color-ciudad-1: #2f6fed;
-  --color-ciudad-2: #3f9142;
-  --color-ciudad-3: #c15a8a;
-  --color-ciudad-4: #e08a3c;
-  --color-ciudad-5: #7c5cc1;
-  --color-ciudad-6: #1a8f8f;
+  --color-ciudad-1: #b2622d;
+  --color-ciudad-2: #728157;
+  --color-ciudad-3: #8c5a3c;
+  --color-ciudad-4: #a67c3d;
+  --color-ciudad-5: #6b5b7a;
+  --color-ciudad-6: #4f6b6b;
 
   /* Traslados y hospedajes: paleta reservada, no se mezcla con colores de ciudad */
-  --color-traslado: #2b3a55;
-  --color-hospedaje: #6b4a2b;
+  --color-traslado: #474238;
+  --color-hospedaje: #643312;
 
-  --radio: 10px;
-  --sombra: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --font-heading: "Caprasimo", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+
+  --radio: 18px;
+  --sombra: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
   --espacio: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-fondo: #14161a;
-    --color-superficie: #1e2126;
-    --color-texto: #f0f0f0;
-    --color-texto-suave: #a0a4ab;
-    --color-borde: #34383f;
+    --color-fondo: #2e2b25;
+    --color-superficie: #474238;
+    --color-texto: #f9f4ed;
+    --color-texto-suave: color-mix(in srgb, #f9f4ed 62%, transparent);
+    --color-borde: color-mix(in srgb, #f9f4ed 18%, transparent);
+    --color-primario: #f6a06b;
+    --color-primario-oscuro: #ffc6a5;
   }
 }
 
@@ -40,7 +50,7 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-body);
   background: var(--color-fondo);
   color: var(--color-texto);
   -webkit-tap-highlight-color: transparent;
@@ -61,7 +71,12 @@ body {
   margin-bottom: var(--espacio);
 }
 
-h1, h2, h3 { margin: 0 0 var(--espacio) 0; }
+h1, h2, h3 {
+  margin: 0 0 var(--espacio) 0;
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
 
 label {
   display: block;
@@ -72,30 +87,32 @@ label {
 
 input, select, textarea {
   width: 100%;
-  padding: 10px;
+  padding: 10px 14px;
   border: 1px solid var(--color-borde);
-  border-radius: 8px;
-  background: var(--color-superficie);
+  border-radius: 999px;
+  background: var(--color-fondo);
   color: var(--color-texto);
   font-size: 15px;
+  font-family: var(--font-body);
 }
 
-textarea { resize: vertical; min-height: 60px; }
+textarea { resize: vertical; min-height: 60px; border-radius: 18px; }
 
 button {
   cursor: pointer;
   border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 14.5px;
+  font-family: var(--font-heading);
+  font-weight: 400;
   background: var(--color-primario);
-  color: white;
+  color: var(--color-fondo);
 }
 button:hover { background: var(--color-primario-oscuro); }
 button.secundario { background: transparent; color: var(--color-primario); border: 1px solid var(--color-primario); }
-button.peligro { background: var(--color-peligro); }
-button.texto { background: none; color: var(--color-primario); padding: 4px 6px; font-weight: 500; }
+button.peligro { background: var(--color-peligro); color: #fff2eb; }
+button.texto { background: none; color: var(--color-primario); padding: 4px 6px; font-weight: 400; }
 
 .fila-botones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--espacio); }
 
@@ -104,14 +121,15 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .chip {
   display: inline-block;
   font-size: 11px;
-  padding: 2px 8px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
   border-radius: 999px;
   border: 1px solid var(--color-borde);
   color: var(--color-texto-suave);
 }
-.chip.deseable { border-color: #9aa; color: #556; }
-.chip.importante { border-color: var(--color-primario); color: var(--color-primario); font-weight: 600; }
-.chip.no_negociable { border-color: var(--color-peligro); color: var(--color-peligro); font-weight: 700; }
+.chip.deseable { background: color-mix(in srgb, #201e1d 6%, transparent); border-color: transparent; color: var(--color-texto-suave); }
+.chip.importante { background: color-mix(in srgb, var(--color-primario) 16%, transparent); border-color: transparent; color: var(--color-primario-oscuro); font-weight: 600; }
+.chip.no_negociable { background: color-mix(in srgb, var(--color-exito) 20%, transparent); border-color: transparent; color: var(--color-exito); font-weight: 700; }
 
 /* Tabs de viaje.html */
 .tabs {
@@ -128,7 +146,8 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   color: var(--color-texto-suave);
   border-radius: 0;
   padding: 14px 16px;
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-weight: 400;
   white-space: nowrap;
 }
 .tabs button.activo { color: var(--color-primario); border-bottom: 2px solid var(--color-primario); }
@@ -136,20 +155,21 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 /* Modal genérico */
 .modal-fondo {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
+  background: color-mix(in srgb, #2e2b25 50%, transparent);
   display: flex; align-items: flex-end; justify-content: center;
   z-index: 100;
 }
 .modal {
   background: var(--color-superficie);
-  border-radius: var(--radio) var(--radio) 0 0;
+  border-radius: calc(var(--radio) * 1.3) calc(var(--radio) * 1.3) 0 0;
   padding: var(--espacio);
   width: 100%; max-width: 560px;
   max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
 }
 @media (min-width: 640px) {
   .modal-fondo { align-items: center; }
-  .modal { border-radius: var(--radio); }
+  .modal { border-radius: calc(var(--radio) * 1.3); }
 }
 
 .lista-item {
@@ -175,17 +195,17 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-dia { flex: 0 0 150px; border-right: 1px solid var(--color-borde); }
 .cal-dia-header { height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 1px solid var(--color-borde); padding: 2px; text-align: center; }
 .cal-dia-header .fecha { font-size: 11px; color: var(--color-texto-suave); }
-.cal-dia-header .ciudad { font-size: 12px; font-weight: 700; }
+.cal-dia-header .ciudad { font-size: 12px; font-weight: 700; font-family: var(--font-heading); }
 .cal-area { position: relative; background-image: repeating-linear-gradient(to bottom, var(--color-borde) 0, var(--color-borde) 1px, transparent 1px, transparent var(--hora-px, 44px)); }
-.cal-bloque { position: absolute; left: 3px; right: 3px; border-radius: 6px; padding: 4px 6px; overflow: hidden; font-size: 11px; color: white; box-shadow: var(--sombra); cursor: grab; user-select: none; border: 2px solid transparent; }
+.cal-bloque { position: absolute; left: 3px; right: 3px; border-radius: 10px; padding: 4px 6px; overflow: hidden; font-size: 11px; color: #fff2eb; box-shadow: var(--sombra); cursor: grab; user-select: none; border: 2px solid transparent; }
 .cal-bloque.fijado { cursor: default; opacity: 0.96; }
 .cal-bloque .titulo { font-weight: 700; font-size: 11.5px; line-height: 1.2; }
 .cal-bloque .acciones { position: absolute; top: 2px; right: 4px; display: flex; gap: 4px; font-size: 11px; }
 .cal-bloque .acciones span { cursor: pointer; opacity: 0.9; }
 .cal-bloque .resize { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; cursor: row-resize; }
-.cal-bloque.cat-deseable { border-color: rgba(255,255,255,0.5); }
-.cal-bloque.cat-importante { border-color: #fff; }
-.cal-bloque.cat-no_negociable { border-color: #fff; border-width: 3px; }
+.cal-bloque.cat-deseable { border-color: rgba(255,242,235,0.5); }
+.cal-bloque.cat-importante { border-color: #fff2eb; }
+.cal-bloque.cat-no_negociable { border-color: #fff2eb; border-width: 3px; }
 .cal-pendientes { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; }
-.cal-chip-pendiente { flex: 0 0 auto; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--color-borde); background: var(--color-superficie); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-.cal-chip-pendiente.seleccionado { background: var(--color-primario); color: white; border-color: var(--color-primario); }
+.cal-chip-pendiente { flex: 0 0 auto; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--color-borde); background: var(--color-fondo); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.cal-chip-pendiente.seleccionado { background: var(--color-primario); color: var(--color-fondo); border-color: var(--color-primario); }

@@ -175,9 +175,12 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
     // El eje de horas siempre es la hora LOCAL del día (cada columna puede tener
     // una ciudad/zona distinta) — el horario de origen se muestra por bloque.
+    // En Agenda no hay encabezado de día dentro de la cuadrícula (ese dato ya
+    // está en la barra de arriba), así que tampoco se reserva ese espacio aquí
+    // — si no, las filas de hora quedan corridas respecto a los bloques.
     const colHoras = document.createElement("div");
     colHoras.className = "cal-col-horas";
-    colHoras.innerHTML = `<div class="cal-header">Hora<br>local</div>` +
+    colHoras.innerHTML = (modoAgenda ? "" : `<div class="cal-header">Hora<br>local</div>`) +
       Array.from({ length: 24 }, (_, h) => `<div class="cal-hora-fila">${String(h).padStart(2, "0")}:00</div>`).join("");
     grid.appendChild(colHoras);
 

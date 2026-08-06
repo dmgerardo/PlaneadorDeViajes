@@ -17,6 +17,10 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
   2. Se suscribe a los nodos de Firebase que necesita con `escuchar()` (de `db.js`).
   3. Devuelve una función de limpieza que cancela esos listeners — `viaje.html` la llama
      al cambiar de tab. **Nunca dejes un listener de Firebase sin su función de limpieza.**
+- `vista-calendario.js` sirve tanto la pestaña "Calendario" como "Agenda" (un solo día) vía
+  `montarVistaCalendario(contenedor, tripId, sesion, { modoAgenda })`. Define globals
+  (`HORA_PX`, `COLORES_CIUDAD`, `colorCss`, `listaDeDias`) que `vista-ciudades.js` reutiliza —
+  por eso `vista-calendario.js` debe cargarse antes que `vista-ciudades.js` en `viaje.html`.
 
 ## Modelo de datos (Firebase Realtime Database)
 

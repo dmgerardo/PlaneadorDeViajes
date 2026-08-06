@@ -1,7 +1,8 @@
 // Vista "Calendario": cuadrícula días x horas con doble zona horaria,
 // bloques flotantes (lugares) arrastrables/redimensionables (incluso entre
-// días) y fijado, traslados/hospedajes como bloques fijos, un timeline para
-// asignar la ciudad de cada día, y prevención de traslapes.
+// días) y fijado, traslados/hospedajes como bloques fijos, y prevención de
+// traslapes. La ciudad de cada día se asigna en la pestaña "Ciudades"
+// (vista-ciudades.js) — aquí solo se lee esa asignación.
 //
 // La misma función sirve para la vista "Calendario" (todos los días) y para
 // "Agenda" (un solo día con navegación prev/next) — ver opciones.modoAgenda.
@@ -84,16 +85,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           <div id="ag-fecha-actual" class="cal-agenda-fecha"></div>
           <button class="secundario" id="ag-next">Siguiente →</button>
         </div>
-      ` : `
-        <div class="tarjeta" id="cal-ciudades-tarjeta">
-          <h3 style="margin-bottom:4px;">Ciudades por día</h3>
-          <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
-            Toca una ciudad y arrastra sobre los días para asignarla (o "🧹 Vaciar" para quitarla).
-          </p>
-          <div class="ciudad-timeline" id="ciudad-timeline"></div>
-          <div class="cal-pendientes" id="cal-ciudades-chips"></div>
-        </div>
-      `}
+      ` : ""}
       <div class="cal-scroll">
         <div class="cal-grid" id="cal-grid"></div>
       </div>
@@ -117,8 +109,6 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
   const estado = { info: {}, ciudades: {}, lugares: {}, itinerario: {}, traslados: {}, hospedajes: {}, ciudadPorDiaManual: {} };
   let lugarSeleccionado = null;
-  let ciudadSeleccionadaTimeline = null;
-  let pintando = false;
   let scrollInicialHecho = false;
   let diaAgendaActual = null;
 
@@ -157,91 +147,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     else diaAgendaActual = hoy;
   }
 
-  // --- Timeline de ciudades por día (solo en modo cuadrícula completa) ---
-  function renderTimeline() {
-    const wrap = document.getElementById("ciudad-timeline");
-    const chipsEl = document.getElementById("cal-ciudades-chips");
-    if (!wrap || !chipsEl) return;
-    const dias = listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
-    limpiar(wrap);
-    dias.forEach(dia => {
-      const ciudadId = estado.ciudadPorDiaManual[dia];
-      const celda = document.createElement("div");
-      celda.className = "ct-dia";
-      celda.dataset.dia = dia;
-      const fechaCorta = new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
-      if (ciudadId && estado.ciudades[ciudadId]) {
-        celda.style.background = colorParaCiudad(ciudadId);
-        celda.style.color = "#fff2eb";
-        celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span><span class="ct-ciudad">${esc(estado.ciudades[ciudadId].nombre)}</span>`;
-      } else {
-        celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span>`;
-      }
-      celda.addEventListener("pointerdown", () => iniciarPintura(dia));
-      celda.addEventListener("pointerenter", () => continuarPintura(dia));
-      wrap.appendChild(celda);
-    });
-
-    limpiar(chipsEl);
-    Object.entries(estado.ciudades).forEach(([id, c]) => {
-      const chip = document.createElement("div");
-      const activo = ciudadSeleccionadaTimeline === id;
-      chip.className = "cal-chip-pendiente" + (activo ? " seleccionado" : "");
-      if (activo) chip.style.background = colorParaCiudad(id);
-      chip.style.borderColor = colorParaCiudad(id);
-      chip.textContent = c.nombre;
-      chip.addEventListener("click", () => {
-        ciudadSeleccionadaTimeline = ciudadSeleccionadaTimeline === id ? null : id;
-        renderTimeline();
-      });
-      chipsEl.appendChild(chip);
-    });
-    const chipBorrar = document.createElement("div");
-    const borrarActivo = ciudadSeleccionadaTimeline === "__borrar__";
-    chipBorrar.className = "cal-chip-pendiente" + (borrarActivo ? " seleccionado" : "");
-    chipBorrar.textContent = "🧹 Vaciar";
-    chipBorrar.addEventListener("click", () => {
-      ciudadSeleccionadaTimeline = borrarActivo ? null : "__borrar__";
-      renderTimeline();
-    });
-    chipsEl.appendChild(chipBorrar);
-  }
-
-  let cambiosPintura = {};
-  function iniciarPintura(dia) {
-    if (!ciudadSeleccionadaTimeline) return;
-    pintando = true;
-    cambiosPintura = {};
-    aplicarPintura(dia);
-  }
-  function continuarPintura(dia) {
-    if (!pintando) return;
-    aplicarPintura(dia);
-  }
-  function aplicarPintura(dia) {
-    const valor = ciudadSeleccionadaTimeline === "__borrar__" ? null : ciudadSeleccionadaTimeline;
-    cambiosPintura[dia] = valor;
-    estado.ciudadPorDiaManual = { ...estado.ciudadPorDiaManual, [dia]: valor };
-    renderTimeline();
-  }
-  async function finalizarPintura() {
-    if (!pintando) return;
-    pintando = false;
-    const mapa = {};
-    Object.entries(cambiosPintura).forEach(([dia, valor]) => {
-      mapa[`viajes/${tripId}/ciudadPorDia/${dia}`] = valor;
-    });
-    cambiosPintura = {};
-    if (Object.keys(mapa).length) await actualizarMultiple(mapa);
-  }
-  document.addEventListener("pointerup", finalizarPintura);
-
   function render() {
     const grid = document.getElementById("cal-grid");
     const pendientesEl = document.getElementById("cal-pendientes");
     if (!grid || !pendientesEl) return;
 
-    if (!modoAgenda) renderTimeline();
     asegurarDiaAgendaPorDefecto();
 
     const dias = modoAgenda ? (diaAgendaActual ? [diaAgendaActual] : []) : listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
@@ -285,7 +195,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         if (!lugar) return;
         if (infoDia.ciudadId && infoDia.ciudadId !== lugar.ciudadId) {
           const nombreCiudadLugar = estado.ciudades[lugar.ciudadId] ? estado.ciudades[lugar.ciudadId].nombre : "otra ciudad";
-          alert(`Este día está asignado a "${infoDia.etiqueta}", pero "${lugar.nombre}" es de ${nombreCiudadLugar}. Asigna primero ese día a la ciudad correcta en el timeline.`);
+          alert(`Este día está asignado a "${infoDia.etiqueta}", pero "${lugar.nombre}" es de ${nombreCiudadLugar}. Asigna primero ese día a la ciudad correcta en la pestaña Ciudades.`);
           return;
         }
         const rect = area.getBoundingClientRect();
@@ -511,7 +421,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     if (listos.length === 0) {
       el.innerHTML = todosPendientes.length === 0
         ? '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>'
-        : '<p style="font-size:12px;color:var(--color-texto-suave)">Asigna ciudades a los días en el timeline de arriba para poder agendar tus lugares.</p>';
+        : '<p style="font-size:12px;color:var(--color-texto-suave)">Asigna ciudades a los días en la pestaña Ciudades para poder agendar tus lugares.</p>';
       return;
     }
     listos.forEach(([id, l]) => {
@@ -527,7 +437,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     if (esperando > 0) {
       const nota = document.createElement("p");
       nota.style.cssText = "font-size:11px;color:var(--color-texto-suave);width:100%;margin:4px 0 0;";
-      nota.textContent = `${esperando} más esperando a que asignes su ciudad en el timeline.`;
+      nota.textContent = `${esperando} más esperando a que asignes su ciudad en la pestaña Ciudades.`;
       el.appendChild(nota);
     }
   }
@@ -571,7 +481,6 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   const cancelarCiudadPorDia = escuchar(refCiudadPorDia, v => { estado.ciudadPorDiaManual = v; solicitarRender(); });
 
   return () => {
-    document.removeEventListener("pointerup", finalizarPintura);
     cancelarInfo(); cancelarCiudades(); cancelarLugares();
     cancelarItinerario(); cancelarTraslados(); cancelarHospedajes(); cancelarCiudadPorDia();
   };

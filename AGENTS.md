@@ -26,7 +26,10 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
 - `viaje.html` es un shell con **dos niveles de navegación**: un switcher de grupo
   ("En el viaje" / "Planeación", `#grupo-switch`) y, debajo, los tabs del grupo activo
   (`#tabs-viaje`), ambos dentro de `#nav-viaje` (sticky). El mapa `grupos` en el script
-  inline de `viaje.html` define qué vistas van en cada grupo. Cada vista (`js/vista-*.js`)
+  inline de `viaje.html` define qué vistas van en cada grupo, y expone `cambiarVista(id)`
+  como función global — cualquier `vista-*.js` puede llamarla para navegar directo a otra
+  pestaña (ej. el checklist de progreso en `vista-info.js`, o el botón "Ir a Ruta" del
+  estado vacío de "Lugares sin agendar" en `vista-calendario.js`). Cada vista (`js/vista-*.js`)
   expone una función `montarVistaX(contenedor, tripId, sesion)` que:
   1. Pinta su HTML en `contenedor`.
   2. Se suscribe a los nodos de Firebase que necesita con `escuchar()` (de `db.js`).

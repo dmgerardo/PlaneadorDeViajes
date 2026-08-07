@@ -371,6 +371,17 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 
 .oculto { display: none !important; }
 
+/* Checklist de progreso "Ciudades → Ruta → Lugares" (pestaña Info). */
+.progreso-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13.5px; }
+.progreso-item:not(:last-child) { border-bottom: 1px solid var(--color-borde); }
+.progreso-circulo {
+  flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--color-borde);
+}
+.progreso-check { flex-shrink: 0; color: var(--color-exito); }
+.progreso-texto-hecho { color: var(--color-texto-suave); text-decoration: line-through; }
+.progreso-item button[data-vista] { margin-left: auto; }
+
 @media (max-width: 480px) {
   .contenedor { padding: 8px; }
 }

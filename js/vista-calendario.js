@@ -517,26 +517,39 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     const idsAgendados = new Set(Object.values(estado.itinerario).map(b => b.refId));
     const todosPendientes = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
 
-    let listos, mensajeVacio;
+    let listos, mensajeVacio, ctaRuta = false;
     if (modoAgenda) {
       // En Agenda solo tiene sentido ofrecer lugares de la ciudad de ESTE
       // día — mostrar los de otras ciudades del viaje solo confunde.
       listos = ciudadDelDiaAgenda ? todosPendientes.filter(([, l]) => l.ciudadId === ciudadDelDiaAgenda) : [];
-      mensajeVacio = ciudadDelDiaAgenda
-        ? "Sin lugares pendientes de esta ciudad."
-        : "Asigna la ciudad de este día en la pestaña Ruta para ver lugares pendientes.";
+      if (ciudadDelDiaAgenda) {
+        mensajeVacio = "Sin lugares pendientes de esta ciudad.";
+      } else {
+        mensajeVacio = "Asigna la ciudad de este día en la pestaña Ruta para ver lugares pendientes.";
+        ctaRuta = true;
+      }
     } else {
       // En Calendario (todos los días) sí tiene sentido ofrecer lugares de
       // cualquier ciudad que ya tenga al menos un día asignado.
       const ciudadesConDia = new Set(Object.values(estado.ciudadPorDiaManual).filter(Boolean));
       listos = todosPendientes.filter(([, l]) => ciudadesConDia.size === 0 || ciudadesConDia.has(l.ciudadId));
       mensajeVacio = "Asigna ciudades a los días en la pestaña Ruta para poder agendar tus lugares.";
+      ctaRuta = true;
     }
 
     if (listos.length === 0) {
-      el.innerHTML = todosPendientes.length === 0
-        ? '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>'
-        : `<p style="font-size:12px;color:var(--color-texto-suave)">${esc(mensajeVacio)}</p>`;
+      if (todosPendientes.length === 0) {
+        el.innerHTML = '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>';
+        return;
+      }
+      // Estado vacío por falta de asignación en Ruta: botón directo a esa
+      // pestaña, no solo el texto explicando qué falta.
+      el.innerHTML = `
+        <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">${esc(mensajeVacio)}</p>
+        ${ctaRuta ? `<button class="secundario" id="cal-btn-ir-ruta">Ir a Ruta</button>` : ""}
+      `;
+      const btnIrRuta = document.getElementById("cal-btn-ir-ruta");
+      if (btnIrRuta) btnIrRuta.addEventListener("click", () => cambiarVista("ruta"));
       return;
     }
     listos.forEach(([id, l]) => {

@@ -4,6 +4,7 @@
 
 async function montarVistaInfo(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
+    <div class="tarjeta" id="in-progreso"></div>
     <div class="tarjeta" id="in-info"></div>
     <div class="tarjeta">
       <h3>Participantes</h3>
@@ -20,9 +21,39 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
 
   const refInfo = refNodo(tripId, "info");
   const refParticipantes = refNodo(tripId, "participantes");
+  const refCiudades = refNodo(tripId, "ciudades");
+  const refCiudadPorDia = refNodo(tripId, "ciudadPorDia");
+  const refLugares = refNodo(tripId, "lugares");
 
   let infoCache = {};
   let participantesCache = {};
+  const progreso = { ciudades: {}, ciudadPorDia: {}, lugares: {} };
+
+  // Checklist de prerrequisitos "Ciudades → Ruta → Lugares" — cada uno
+  // habilita mejor al siguiente (Ruta necesita ciudades capturadas; el
+  // Calendario necesita días asignados en Ruta para poder agendar lugares).
+  const renderProgreso = programarRender(() => {
+    const el = document.getElementById("in-progreso");
+    if (!el) return;
+    const pasos = [
+      { hecho: Object.keys(progreso.ciudades).length > 0, texto: "Ciudades agregadas", vista: "ciudades" },
+      { hecho: Object.values(progreso.ciudadPorDia).some(Boolean), texto: "Días asignados en Ruta", vista: "ruta" },
+      { hecho: Object.keys(progreso.lugares).length > 0, texto: "Lugares agregados", vista: "lugares" }
+    ];
+    el.innerHTML = `
+      <h3>Progreso de planeación</h3>
+      ${pasos.map(p => `
+        <div class="progreso-item">
+          ${p.hecho ? icono("check", 16, "progreso-check") : `<span class="progreso-circulo"></span>`}
+          <span class="${p.hecho ? "progreso-texto-hecho" : ""}">${esc(p.texto)}</span>
+          ${!p.hecho ? `<button class="texto" data-vista="${p.vista}">Ir →</button>` : ""}
+        </div>
+      `).join("")}
+    `;
+    el.querySelectorAll("button[data-vista]").forEach(btn => {
+      btn.addEventListener("click", () => cambiarVista(btn.dataset.vista));
+    });
+  });
 
   function sumarDias(fechaStr, dias) {
     const fecha = new Date(`${fechaStr}T00:00:00Z`);
@@ -187,6 +218,12 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
 
   const cancelarInfo = escuchar(refInfo, renderInfo);
   const cancelarParticipantes = escuchar(refParticipantes, renderParticipantes);
+  const cancelarCiudadesProgreso = escuchar(refCiudades, v => { progreso.ciudades = v; renderProgreso(); });
+  const cancelarCiudadPorDiaProgreso = escuchar(refCiudadPorDia, v => { progreso.ciudadPorDia = v; renderProgreso(); });
+  const cancelarLugaresProgreso = escuchar(refLugares, v => { progreso.lugares = v; renderProgreso(); });
 
-  return () => { cancelarInfo(); cancelarParticipantes(); };
+  return () => {
+    cancelarInfo(); cancelarParticipantes();
+    cancelarCiudadesProgreso(); cancelarCiudadPorDiaProgreso(); cancelarLugaresProgreso();
+  };
 }

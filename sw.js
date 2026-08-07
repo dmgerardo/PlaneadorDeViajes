@@ -18,6 +18,7 @@ const ARCHIVOS_APP_SHELL = [
   `js/version.js?v=${APP_VERSION}`,
   `js/firebase-config.js?v=${APP_VERSION}`,
   `js/render-utils.js?v=${APP_VERSION}`,
+  `js/tema.js?v=${APP_VERSION}`,
   `js/iconos.js?v=${APP_VERSION}`,
   `js/db.js?v=${APP_VERSION}`,
   `js/auth.js?v=${APP_VERSION}`,

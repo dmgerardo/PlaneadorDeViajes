@@ -387,7 +387,7 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-col-horas { flex: 0 0 56px; border-right: 1px solid var(--color-borde); }
 .cal-header { height: 56px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: var(--color-texto-suave); border-bottom: 1px solid var(--color-borde); }
 .cal-hora-fila { height: var(--hora-px, 44px); font-size: 12px; color: var(--color-texto-suave); text-align: right; padding-right: 6px; border-top: 1px solid var(--color-borde); box-sizing: border-box; }
-.cal-dia { flex: 0 0 150px; border-right: 1px solid var(--color-borde); }
+.cal-dia { flex: 0 0 150px; border-right: 1px solid var(--color-borde); scroll-snap-align: start; }
 .cal-dia-header { height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 1px solid var(--color-borde); padding: 2px; text-align: center; }
 .cal-dia-header .fecha { font-size: 12.5px; color: var(--color-texto-suave); }
 .cal-dia-header .ciudad { font-size: 13.5px; font-weight: 700; font-family: var(--font-heading); }
@@ -404,7 +404,16 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 }
 .cal-bloque .accion-quitar { top: 1px; }
 .cal-bloque .accion-fijar { bottom: 1px; }
+/* El icono se queda chico visualmente, pero el área que responde al toque
+   crece a ~44x44px (guía de accesibilidad táctil) vía un ::before invisible
+   más grande — el bloque puede ser más chico que eso sin que se vea raro. */
+.cal-bloque .accion-fijar::before, .cal-bloque .accion-quitar::before {
+  content: ""; position: absolute; inset: -12px;
+}
 .cal-bloque .resize { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; cursor: row-resize; touch-action: none; }
+.cal-bloque .resize::before {
+  content: ""; position: absolute; top: -15px; bottom: -15px; left: 0; right: 0;
+}
 .cal-bloque.cat-deseable { border-color: rgba(255,242,235,0.5); }
 .cal-bloque.cat-importante { border-color: #fff2eb; }
 .cal-bloque.cat-no_negociable { border-color: #fff2eb; border-width: 3px; }
@@ -416,6 +425,14 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
    para aprovechar el espacio y mostrar más días sin tener que hacer scroll. */
 @media (min-width: 900px) {
   .cal-dia { flex: 1 1 190px; min-width: 190px; }
+}
+
+/* Móvil: columnas de día un poco más anchas (más fáciles de tocar con el
+   dedo) y scroll-snap para que, al soltar el dedo, el día quede alineado en
+   vez de a la mitad entre dos columnas. */
+@media (max-width: 767px) {
+  .cal-dia { flex: 0 0 190px; }
+  .cal-scroll { scroll-snap-type: x mandatory; }
 }
 
 /* Vista Agenda: un solo día, más ancho, sin encabezado de fecha repetido

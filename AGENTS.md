@@ -107,10 +107,13 @@ vía `identidades/{claveNombre} → userId` (`js/auth.js`). No mezclar ambos con
 
 **Contraseña**: `usuarios/{userId}/passwordHash` se puede cambiar de dos formas —
 `cambiarContrasenaPropia(userId, actual, nueva)` (verifica la actual) desde el botón
-"🔑 Contraseña"/"🔑 Cambiar mi contraseña" (index.html y tab Info), o
+"Contraseña"/"Cambiar mi contraseña" (index.html y tab Info), o
 `restablecerContrasena(userId, nueva)` (sin verificar, solo lo ofrece la UI a un admin
 del viaje sobre otro participante, en la tab Info) — no existe recuperación por email
-porque no hay backend propio ni dirección de correo capturada.
+porque no hay backend propio ni dirección de correo capturada. La pantalla de login
+(`index.html`) tiene un texto fijo bajo "Entrar" que apunta a esto ("Pide a un admin del
+viaje que te la restablezca") — es solo texto informativo, no dispara ningún flujo por sí
+mismo (no hay forma de saber quién es admin de qué viaje sin haber iniciado sesión).
 
 ## Invariantes y convenciones
 

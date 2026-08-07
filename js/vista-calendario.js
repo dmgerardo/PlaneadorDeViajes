@@ -160,7 +160,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       ` : ""}
       <div class="cal-body">
         <div class="cal-col-horas" id="cal-col-horas"></div>
-        <div class="cal-scroll">
+        <div class="cal-scroll scroll-fade-x">
           <div class="cal-grid" id="cal-grid"></div>
         </div>
       </div>
@@ -169,7 +169,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 6px;">
           Toca un lugar y luego toca la hora del día donde quieras colocarlo.
         </p>
-        <div class="cal-pendientes" id="cal-pendientes"></div>
+        <div class="cal-pendientes scroll-fade-x" id="cal-pendientes"></div>
       </div>
     </div>
   `;
@@ -321,7 +321,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
           const duracion = t.finUTC ? ` (${formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC))})` : "";
           const viaEscalas = (t.escalas || []).map(e => ` → ${e}`).join("");
-          pintarBloqueFijo(area, `✈️ ${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
+          pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
         });
 
       // Hospedajes: un bloque el día de check-in y otro el día de check-out.
@@ -329,11 +329,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         .filter(([, h]) => h.checkinUTC && h.checkinUTC.slice(0, 10) === dia)
         .forEach(([id, h]) => {
           const noches = h.noches ? ` (${h.noches} noche${h.noches > 1 ? "s" : ""})` : "";
-          pintarBloqueFijo(area, `🏨 Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje");
+          pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje");
         });
       Object.entries(estado.hospedajes)
         .filter(([, h]) => h.checkoutUTC && h.checkoutUTC.slice(0, 10) === dia)
-        .forEach(([id, h]) => pintarBloqueFijo(area, `🏨 Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje"));
+        .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje"));
 
       grid.appendChild(col);
     });
@@ -353,7 +353,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     }
   }
 
-  function pintarBloqueFijo(area, titulo, inicioUTC, finUTC, zonaHoraria, colorVar) {
+  function pintarBloqueFijo(area, iconoTipo, texto, inicioUTC, finUTC, zonaHoraria, colorVar) {
     const inicio = horaLocalDecimal(inicioUTC, zonaHoraria);
     let fin = horaLocalDecimal(finUTC, zonaHoraria);
     // Traslado nocturno o de varios días: recorta el bloque al final del día visible
@@ -368,7 +368,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     const horaOrigenTxt = zonaOrigen !== zonaHoraria
       ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(inicioUTC, zonaHoraria)} local · ${formatoHora(inicioUTC, zonaOrigen)} origen</div>`
       : "";
-    div.innerHTML = `<div class="titulo">🔒 ${esc(titulo)}</div>${horaOrigenTxt}`;
+    div.innerHTML = `<div class="titulo">${icono("lock", 12)}${icono(iconoTipo, 12)} ${esc(texto)}</div>${horaOrigenTxt}`;
     area.appendChild(div);
   }
 
@@ -387,9 +387,9 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} origen</div>`
       : "";
     div.innerHTML = `
-      <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? "🔒" : "📌"}</span>
-      <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">✕</span>
-      <div class="titulo">${lugar.aireLibre ? "❄️ " : ""}${esc(lugar.nombre)}</div>
+      <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? icono("lock", 13) : icono("pin", 13)}</span>
+      <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">${icono("x", 13)}</span>
+      <div class="titulo">${lugar.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(lugar.nombre)}</div>
       <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} local</div>
       ${horaOrigenTxt}
       ${bloque.fijado ? "" : '<div class="resize"></div>'}
@@ -542,7 +542,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     listos.forEach(([id, l]) => {
       const chip = document.createElement("div");
       chip.className = "cal-chip-pendiente" + (lugarSeleccionado === id ? " seleccionado" : "");
-      chip.textContent = `${l.aireLibre ? "❄️ " : ""}${l.nombre}`;
+      chip.innerHTML = `${l.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(l.nombre)}`;
       chip.addEventListener("click", () => {
         lugarSeleccionado = lugarSeleccionado === id ? null : id;
         renderPendientes();

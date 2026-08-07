@@ -1,6 +1,6 @@
 // Vista "Ruta": asigna la ciudad en la que se está cada día del viaje,
 // mediante un timeline — toca una ciudad y luego toca cada día para irla
-// asignando (o "🧹 Quitar" para ir borrando). No es arrastre: con mouse,
+// asignando (o "Quitar" para ir borrando). No es arrastre: con mouse,
 // arrastrar pintaba de más las celdas "en el camino" del puntero sin
 // querer — un clic por día es más predecible. Esta asignación explícita
 // (ciudadPorDia) es la que usan las vistas Agenda/Calendario para saber
@@ -16,7 +16,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     <div class="tarjeta">
       <h2>Ruta por día</h2>
       <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
-        Toca una ciudad y luego toca cada día para asignarla (o "🧹 Quitar" para ir borrando).
+        Toca una ciudad y luego toca cada día para asignarla (o "Quitar" para ir borrando).
         El Calendario y la Agenda usan esta asignación para saber en qué ciudad estás cada día.
       </p>
       <div class="ruta-layout">
@@ -88,7 +88,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     const chipBorrar = document.createElement("div");
     const borrarActivo = ciudadSeleccionada === "__borrar__";
     chipBorrar.className = "cal-chip-pendiente" + (borrarActivo ? " seleccionado" : "");
-    chipBorrar.textContent = "🧹 Quitar";
+    chipBorrar.innerHTML = iconoTexto("eraser", "Quitar", 14);
     chipBorrar.addEventListener("click", () => {
       ciudadSeleccionada = borrarActivo ? null : "__borrar__";
       render();

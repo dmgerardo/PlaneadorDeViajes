@@ -64,6 +64,17 @@
 
 * { box-sizing: border-box; }
 
+/* Foco de teclado: se quita el outline azul por defecto del navegador y se
+   reemplaza por uno del color de acento, SOLO cuando :focus-visible decide
+   que corresponde mostrarlo (navegación por teclado, no clic/tap). */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-primario); outline-offset: 2px; }
+
+/* Icono Lucide inline (ver js/iconos.js) — hereda el color del texto que lo
+   rodea (stroke="currentColor" en el SVG). */
+.icono { flex-shrink: 0; vertical-align: -3px; }
+.icono-texto { margin-right: 6px; }
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -194,6 +205,24 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .tabs {
   display: flex;
   overflow-x: auto;
+}
+
+/* Indicador de "hay más para deslizar" en contenedores con scroll
+   horizontal: sombra tenue en el borde, que solo aparece de ese lado si
+   de verdad queda contenido oculto ahí (no cuando ya se llegó al final).
+   Truco sin JS: dos capas de degradado "local" (tapan la sombra con el
+   color de fondo mientras hay contenido detrás) + dos capas "scroll" fijas
+   (la sombra en sí). --color-fade-x debe ser el fondo real de ese punto. */
+.scroll-fade-x {
+  background-image:
+    linear-gradient(to right, var(--color-fade-x, var(--color-superficie)) 30%, transparent),
+    linear-gradient(to left, var(--color-fade-x, var(--color-superficie)) 30%, transparent),
+    linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent),
+    linear-gradient(to left, rgba(0, 0, 0, 0.18), transparent);
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 24px 100%, 24px 100%, 10px 100%, 10px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 .tabs button {
   background: none;

@@ -8,13 +8,13 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     <div class="tarjeta">
       <h3>Participantes</h3>
       <div class="fila-botones" style="margin-top:0;">
-        <button class="secundario" id="in-btn-mi-contrasena">🔑 Cambiar mi contraseña</button>
+        <button class="secundario" id="in-btn-mi-contrasena">${iconoTexto("key", "Cambiar mi contraseña", 15)}</button>
       </div>
       <div id="in-participantes"></div>
       <p style="font-size:12px;color:var(--color-texto-suave)">
         Comparte la liga de invitación de este viaje para que otros se unan directamente.
       </p>
-      <button class="secundario" id="in-btn-copiar-liga">🔗 Copiar liga de invitación</button>
+      <button class="secundario" id="in-btn-copiar-liga">${iconoTexto("link", "Copiar liga de invitación", 15)}</button>
     </div>
   `;
 
@@ -170,9 +170,9 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     const boton = document.getElementById("in-btn-copiar-liga");
     try {
       await navigator.clipboard.writeText(liga);
-      const textoOriginal = boton.textContent;
-      boton.textContent = "✅ Copiada";
-      setTimeout(() => { boton.textContent = textoOriginal; }, 1800);
+      const htmlOriginal = boton.innerHTML;
+      boton.innerHTML = iconoTexto("check", "Copiada", 15);
+      setTimeout(() => { boton.innerHTML = htmlOriginal; }, 1800);
     } catch (e) {
       const { modal, cerrar } = abrirModal(`
         <h3>Liga de invitación</h3>

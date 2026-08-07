@@ -5,6 +5,13 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
 ## Arquitectura
 
 - Sin build ni framework: HTML + CSS + JS vanilla (ES6+), cargado directo por `<script>`.
+- **Iconos**: `js/iconos.js` — SVG de Lucide (stroke-width 2.75) embebidos inline como
+  strings, sin CDN (para que sigan disponibles offline). `icono(nombre, tamano)` devuelve
+  el `<svg>`; `iconoTexto(nombre, texto, tamano)` es el atajo para "icono + etiqueta" (usa
+  `esc()` internamente, así que `texto` no debe venir ya escapado). Agregar un icono nuevo
+  = copiar su `<path>` de `unpkg.com/lucide-static@latest/icons/<nombre>.svg` al mapa
+  `ICONOS_LUCIDE`. Nunca emoji como icono funcional (botones/chips/bloques) — el ✈️ del
+  `<h1>` de `index.html` es la única excepción, es decorativo.
 - Backend: Firebase Realtime Database (SDK `compat` por CDN) + Authentication anónima.
   No hay servidor propio ni Cloud Functions.
 - Hosting: **Firebase Hosting**, deploy automático en cada push a `main` vía GitHub Actions

@@ -38,7 +38,7 @@ async function mostrarPantallaViajes(sesion) {
         <strong>${esc(info.nombre)}</strong><br>
         <span style="font-size:12px;color:var(--color-texto-suave)">${esc(info.fechaInicio || "")} — ${esc(info.fechaFin || "")}</span>
       </div>
-      <span class="lista-item-chevron">›</span>
+      <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
     `;
     fila.addEventListener("click", () => {
       window.location.href = `viaje.html?trip=${encodeURIComponent(tripId)}`;
@@ -118,6 +118,7 @@ document.getElementById("btn-entrar").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("btn-mi-contrasena").innerHTML = iconoTexto("key", "Contraseña", 15);
 document.getElementById("btn-mi-contrasena").addEventListener("click", () => {
   abrirModalCambiarContrasena(obtenerSesion());
 });

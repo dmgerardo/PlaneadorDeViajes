@@ -25,7 +25,7 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       </div>
       <div class="fila-botones">
         <button class="secundario" id="chk-btn-varios">+ Agregar varios</button>
-        <button class="secundario" id="chk-btn-importar">📋 Importar de otro viaje</button>
+        <button class="secundario" id="chk-btn-importar">${iconoTexto("clipboard-list", "Importar de otro viaje", 15)}</button>
       </div>
     </div>
   `;
@@ -121,7 +121,7 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
           <td style="text-align:center;padding:6px;">
             <input type="checkbox" data-item="${esc(id)}" data-persona="${esc(userId)}" ${item.porPersona && item.porPersona[userId] ? "checked" : ""}>
           </td>`).join("")}
-        <td style="text-align:center;"><button class="texto" data-borrar="${esc(id)}">✕</button></td>
+        <td style="text-align:center;"><button class="texto" data-borrar="${esc(id)}">${icono("x", 15)}</button></td>
       `;
       tabla.appendChild(tr);
 

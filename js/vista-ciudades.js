@@ -42,7 +42,7 @@ async function montarVistaCiudades(contenedor, tripId, sesion) {
       fila.className = "lista-item lista-item-clic";
       fila.innerHTML = `
         <div><strong>${esc(c.nombre)}</strong><br><span style="font-size:12px;color:var(--color-texto-suave)">${esc(c.zonaHoraria)}</span></div>
-        <span class="lista-item-chevron">›</span>
+        <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
       `;
       fila.addEventListener("click", () => abrirFormularioCiudad(id));
       el.appendChild(fila);

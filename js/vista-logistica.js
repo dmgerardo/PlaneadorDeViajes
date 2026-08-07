@@ -89,7 +89,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             Confirmación: ${esc(t.confirmacion || "-")}
           </span>
         </div>
-        <span class="lista-item-chevron">›</span>
+        <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
       `;
       fila.addEventListener("click", () => abrirFormularioTraslado(id));
       el.appendChild(fila);
@@ -119,7 +119,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             Confirmación: ${esc(h.claveReservacion || "-")}
           </span>
         </div>
-        <span class="lista-item-chevron">›</span>
+        <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
       `;
       fila.addEventListener("click", () => abrirFormularioHospedaje(id));
       el.appendChild(fila);
@@ -182,7 +182,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       fila.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px;";
       fila.innerHTML = `
         <select style="flex:1;">${opcionesCiudadesTraslado(valorActual || "")}</select>
-        <button type="button" class="texto">✕</button>
+        <button type="button" class="texto">${icono("x", 16)}</button>
       `;
       fila.querySelector("button").addEventListener("click", () => fila.remove());
       listaEscalas.appendChild(fila);

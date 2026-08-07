@@ -70,7 +70,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
         tarjeta.innerHTML = `
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <strong>${esc(l.nombre)}</strong> ${l.aireLibre ? "❄️" : ""}<br>
+              <strong>${esc(l.nombre)}</strong> ${l.aireLibre ? icono("snowflake", 13) : ""}<br>
               <span style="font-size:12px;color:var(--color-texto-suave)">${esc(ciudad ? ciudad.nombre : "Sin ciudad")}</span>
             </div>
             <span class="chip ${esc(l.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[l.categoria] || l.categoria)}</span>
@@ -78,8 +78,8 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
           ${l.notas ? `<p style="font-size:13px;">${esc(l.notas)}</p>` : ""}
           ${(l.liga_mapa || (l.ligas || []).length) ? `
           <div class="fila-botones">
-            ${l.liga_mapa ? `<a href="${esc(l.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button class="secundario">🗺️ Mapa</button></a>` : ""}
-            ${(l.ligas || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><button class="secundario">🔗 Liga</button></a>`).join("")}
+            ${l.liga_mapa ? `<a href="${esc(l.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button class="secundario">${iconoTexto("map", "Mapa", 14)}</button></a>` : ""}
+            ${(l.ligas || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><button class="secundario">${iconoTexto("link", "Liga", 14)}</button></a>`).join("")}
           </div>` : ""}
         `;
         // Las ligas de Mapa/Interés abren en otra pestaña y no deben disparar
@@ -148,7 +148,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
         <input id="fl-liga" type="url" placeholder="https://… (opcional)" value="${esc(existente && existente.ligas ? (existente.ligas[0] || "") : "")}">
         <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
           <input id="fl-aire-libre" type="checkbox" ${existente && existente.aireLibre ? "checked" : ""}>
-          ❄️ Actividad al aire libre (requiere ropa de intemperie)
+          ${icono("snowflake", 15)} Actividad al aire libre (requiere ropa de intemperie)
         </label>
         <label for="fl-notas">Notas</label>
         <textarea id="fl-notas" placeholder="Opcional">${esc(existente ? (existente.notas || "") : "")}</textarea>

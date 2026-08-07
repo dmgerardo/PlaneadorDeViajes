@@ -32,15 +32,15 @@ async function mostrarPantallaViajes(sesion) {
     const info = snap.val();
     if (!info) continue;
     const fila = document.createElement("div");
-    fila.className = "lista-item";
+    fila.className = "lista-item lista-item-clic";
     fila.innerHTML = `
       <div>
         <strong>${esc(info.nombre)}</strong><br>
         <span style="font-size:12px;color:var(--color-texto-suave)">${esc(info.fechaInicio || "")} — ${esc(info.fechaFin || "")}</span>
       </div>
-      <button class="secundario" data-trip="${esc(tripId)}">Abrir</button>
+      <span class="lista-item-chevron">›</span>
     `;
-    fila.querySelector("button").addEventListener("click", () => {
+    fila.addEventListener("click", () => {
       window.location.href = `viaje.html?trip=${encodeURIComponent(tripId)}`;
     });
     listaEl.appendChild(fila);

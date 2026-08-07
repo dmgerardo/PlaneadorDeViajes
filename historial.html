@@ -11,7 +11,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=25">
+<link rel="stylesheet" href="css/estilos.css?v=26">
 </head>
 <body>
   <div class="contenedor">
@@ -20,6 +20,18 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v26 — Varios ajustes: navegación, listas y escalas</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li>El botón "← Viajes" se movió al primer renglón, junto al switch "En el viaje"/"Planeación".</li>
+        <li>En la pantalla de "Mis viajes", se quitó el botón "Abrir" — tocar el renglón del viaje ya abre directo.</li>
+        <li>El campo "Ciudad de origen" (pestaña Info) ahora busca en el mismo catálogo que Ciudades, y rellena sola la zona horaria de origen.</li>
+        <li>Ruta ahora es de dos columnas: las ciudades para elegir a la izquierda, los días a la derecha (ya no quedan hasta abajo). La fecha corta muestra el mes con 3 letras en vez de número.</li>
+        <li>Traslados: nueva opción "+ Agregar escala" para capturar vuelos/trayectos con conexiones — se muestran en la lista y en el bloque del Calendario.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v25 — Asignar días en Ruta con clic, no arrastre</h3>
@@ -249,7 +261,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=25"></script>
-  <script src="js/version.js?v=25"></script>
+  <script src="js/app-version.js?v=26"></script>
+  <script src="js/version.js?v=26"></script>
 </body>
 </html>

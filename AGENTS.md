@@ -71,7 +71,11 @@ viajes/{tripId}:
   lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
   ciudadPorDia/{fecha}: ciudadId  // asignación explícita del timeline; fecha = "AAAA-MM-DD"
-  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion }
+  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion, escalas }
+  // escalas: string[] opcional, nombres de ciudad en orden (mismo universo que
+  // origen/destino — ver opcionesCiudadesTraslado()). Es solo informativo: no
+  // tiene horas propias, el traslado sigue siendo un único bloque de
+  // inicioUTC a finUTC en Calendario/Agenda.
   hospedajes/{hospedajeId}: { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion }
   // origen/destino/ciudad son nombres (texto) elegidos de la lista combinada
   // info.ciudadOrigen + nombres de "ciudades" — ver opcionesCiudadesTraslado() en

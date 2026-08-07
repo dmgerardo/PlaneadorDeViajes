@@ -307,7 +307,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         .forEach(([id, t]) => {
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
           const duracion = t.finUTC ? ` (${formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC))})` : "";
-          pintarBloqueFijo(area, `✈️ ${t.tipo}: ${t.origen} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
+          const viaEscalas = (t.escalas || []).map(e => ` → ${e}`).join("");
+          pintarBloqueFijo(area, `✈️ ${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
         });
 
       // Hospedajes: un bloque el día de check-in y otro el día de check-out.

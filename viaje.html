@@ -12,18 +12,19 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=25">
+<link rel="stylesheet" href="css/estilos.css?v=26">
 </head>
 <body>
   <div id="nav-viaje">
-    <div class="grupo-switch" id="grupo-switch">
-      <button type="button" data-grupo="viaje">En el viaje</button>
-      <button type="button" data-grupo="planeacion">Planeación</button>
-    </div>
-    <div class="tabs" id="tabs-viaje">
+    <div class="fila-superior">
       <button class="texto" id="btn-volver" style="flex:0 0 auto;">← Viajes</button>
-      <a href="historial.html" class="version-badge" id="badge-version" style="align-self:center;margin:0 12px 0 auto;flex:0 0 auto;"></a>
+      <div class="grupo-switch" id="grupo-switch">
+        <button type="button" data-grupo="viaje">En el viaje</button>
+        <button type="button" data-grupo="planeacion">Planeación</button>
+      </div>
+      <a href="historial.html" class="version-badge" id="badge-version" style="align-self:center;flex:0 0 auto;"></a>
     </div>
+    <div class="tabs" id="tabs-viaje"></div>
   </div>
 
   <div class="contenedor" id="contenido-vista">
@@ -33,20 +34,20 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/app-version.js?v=25"></script>
-  <script src="js/version.js?v=25"></script>
-  <script src="js/firebase-config.js?v=25"></script>
-  <script src="js/render-utils.js?v=25"></script>
-  <script src="js/db.js?v=25"></script>
-  <script src="js/auth.js?v=25"></script>
-  <script src="js/vista-info.js?v=25"></script>
-  <script src="js/catalogo-ciudades.js?v=25"></script>
-  <script src="js/vista-ciudades.js?v=25"></script>
-  <script src="js/vista-calendario.js?v=25"></script>
-  <script src="js/vista-ruta.js?v=25"></script>
-  <script src="js/vista-logistica.js?v=25"></script>
-  <script src="js/vista-lugares.js?v=25"></script>
-  <script src="js/vista-checklist.js?v=25"></script>
+  <script src="js/app-version.js?v=26"></script>
+  <script src="js/version.js?v=26"></script>
+  <script src="js/firebase-config.js?v=26"></script>
+  <script src="js/render-utils.js?v=26"></script>
+  <script src="js/db.js?v=26"></script>
+  <script src="js/auth.js?v=26"></script>
+  <script src="js/catalogo-ciudades.js?v=26"></script>
+  <script src="js/vista-info.js?v=26"></script>
+  <script src="js/vista-ciudades.js?v=26"></script>
+  <script src="js/vista-calendario.js?v=26"></script>
+  <script src="js/vista-ruta.js?v=26"></script>
+  <script src="js/vista-logistica.js?v=26"></script>
+  <script src="js/vista-lugares.js?v=26"></script>
+  <script src="js/vista-checklist.js?v=26"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const tripId = params.get("trip");
@@ -93,15 +94,14 @@
 
     function pintarTabsDelGrupo(nombreGrupo, idActivo) {
       const tabsEl = document.getElementById("tabs-viaje");
-      tabsEl.querySelectorAll("button[data-vista]").forEach(b => b.remove());
-      const badge = document.getElementById("badge-version");
+      limpiar(tabsEl);
       grupos[nombreGrupo].forEach(v => {
         const btn = document.createElement("button");
         btn.dataset.vista = v.id;
         btn.textContent = v.label;
         btn.classList.toggle("activo", v.id === idActivo);
         btn.addEventListener("click", () => cambiarVista(v.id));
-        tabsEl.insertBefore(btn, badge);
+        tabsEl.appendChild(btn);
       });
       document.querySelectorAll("#grupo-switch button").forEach(b => {
         b.classList.toggle("activo", b.dataset.grupo === nombreGrupo);

@@ -213,9 +213,10 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 }
 .segmentado button.activo { background: var(--color-primario); color: var(--color-sobre-primario); border-color: var(--color-primario); }
 
-/* Switch de grupo (En el viaje / Planeación), en la misma barra sticky que
-   los tabs — ver #nav-viaje en viaje.html. */
-.grupo-switch { display: flex; gap: 6px; padding: 8px 10px 0; }
+/* Fila superior de #nav-viaje: botón "← Viajes" + switch de grupo (En el
+   viaje / Planeación) + badge de versión, todo en un solo renglón. */
+.fila-superior { display: flex; align-items: center; gap: 8px; padding: 8px 10px 0; }
+.grupo-switch { display: flex; gap: 6px; flex: 1; }
 .grupo-switch button {
   flex: 1;
   background: none;
@@ -392,10 +393,17 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   text-transform: capitalize;
 }
 
+/* Pestaña Ruta: columna izquierda con las ciudades para elegir, columna
+   derecha con el timeline de días — así las ciudades no quedan hasta abajo
+   del todo, se eligen junto a los días que se van a tocar. */
+.ruta-layout { display: flex; gap: 12px; align-items: flex-start; }
+.ruta-ciudades { flex: 0 0 118px; display: flex; flex-direction: column; gap: 8px; }
+.ruta-ciudades .cal-chip-pendiente { width: 100%; box-sizing: border-box; text-align: center; white-space: normal; }
+
 /* Timeline de ciudades por día (pestaña Ruta) — siempre vertical, un día
    por fila, sin importar el ancho de pantalla: es más clara que acostada
    en pantallas anchas y evita tener que dar scroll horizontal. */
-.ciudad-timeline { display: flex; flex-direction: column; gap: 4px; }
+.ciudad-timeline { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .ct-dia {
   flex: 0 0 auto; display: flex; align-items: center; gap: 12px;
   min-height: 48px; padding: 10px 16px; border-radius: 10px;

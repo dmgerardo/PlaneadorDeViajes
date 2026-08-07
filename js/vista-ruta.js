@@ -19,8 +19,10 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
         Toca una ciudad y luego toca cada día para asignarla (o "🧹 Quitar" para ir borrando).
         El Calendario y la Agenda usan esta asignación para saber en qué ciudad estás cada día.
       </p>
-      <div class="ciudad-timeline" id="ciudad-timeline"></div>
-      <div class="cal-pendientes" id="cal-ciudades-chips"></div>
+      <div class="ruta-layout">
+        <div class="ruta-ciudades" id="cal-ciudades-chips"></div>
+        <div class="ciudad-timeline" id="ciudad-timeline"></div>
+      </div>
     </div>
   `;
 
@@ -53,7 +55,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
       const celda = document.createElement("div");
       celda.className = "ct-dia";
       celda.dataset.dia = dia;
-      const fechaCorta = new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+      const fechaCorta = new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", timeZone: "UTC" }).replace(".", "");
       if (ciudadId && estado.ciudades[ciudadId]) {
         celda.style.background = colorParaCiudad(ciudadId);
         celda.style.color = "#fff2eb";

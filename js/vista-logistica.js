@@ -82,7 +82,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       fila.className = "lista-item lista-item-clic";
       fila.innerHTML = `
         <div>
-          <strong>${esc(t.tipo)} — ${esc(t.origen)} → ${esc(t.destino)}</strong><br>
+          <strong>${esc(t.tipo)} — ${esc(t.origen)}${(t.escalas || []).map(e => ` → ${esc(e)}`).join("")} → ${esc(t.destino)}</strong><br>
           <span style="font-size:12px;color:var(--color-texto-suave)">
             ${esc(formatoFecha(t.inicioUTC, zonaSalida))} ${esc(formatoHora(t.inicioUTC, zonaSalida))} hora de ${esc(t.origen)}
             ${duracion ? ` · Duración: ${esc(duracion)}` : ""} ·
@@ -150,6 +150,9 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <select id="ft-origen" required autofocus>${opcionesCiudadesTraslado(existente ? existente.origen : infoCache.ciudadOrigen || "")}</select>
         <label for="ft-destino">Destino</label>
         <select id="ft-destino" required>${opcionesCiudadesTraslado(existente ? existente.destino : "")}</select>
+        <label>Escalas (opcional)</label>
+        <div id="ft-escalas-lista"></div>
+        <button type="button" class="secundario" id="ft-btn-escala">+ Agregar escala</button>
         <label for="ft-fecha">Fecha de salida</label>
         <input id="ft-fecha" type="date" required value="${esc(valInicioFecha)}"${limitesFecha()}>
         <label for="ft-hora">Hora de salida (hora local del origen)</label>
@@ -169,6 +172,23 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
     `);
     if (existente) modal.querySelector("#ft-tipo").value = existente.tipo;
     modal.querySelector("#ft-cancelar").addEventListener("click", cerrar);
+
+    // Escalas: filas repetibles de ciudad, mismo selector que Origen/Destino.
+    // Es solo informativo (no se calculan horas por escala) — el traslado
+    // completo sigue siendo un único bloque de origen a destino.
+    const listaEscalas = modal.querySelector("#ft-escalas-lista");
+    function agregarFilaEscala(valorActual) {
+      const fila = document.createElement("div");
+      fila.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px;";
+      fila.innerHTML = `
+        <select style="flex:1;">${opcionesCiudadesTraslado(valorActual || "")}</select>
+        <button type="button" class="texto">✕</button>
+      `;
+      fila.querySelector("button").addEventListener("click", () => fila.remove());
+      listaEscalas.appendChild(fila);
+    }
+    (existente && existente.escalas ? existente.escalas : []).forEach(nombre => agregarFilaEscala(nombre));
+    modal.querySelector("#ft-btn-escala").addEventListener("click", () => agregarFilaEscala(null));
     if (existente) {
       modal.querySelector("#ft-eliminar").addEventListener("click", async () => {
         if (confirm("¿Quitar este traslado?")) {
@@ -193,6 +213,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       const fechaLlegada = modal.querySelector("#ft-fecha-llegada").value || fecha;
       const horaLlegada = modal.querySelector("#ft-hora-llegada").value;
       const confirmacion = modal.querySelector("#ft-confirmacion").value.trim();
+      const escalas = Array.from(listaEscalas.querySelectorAll("select")).map(s => s.value).filter(Boolean);
       if (!origen || !destino || !fecha || !hora || !horaLlegada) return;
       // Cada hora se interpreta en la zona LOCAL de su propia ciudad (origen/destino),
       // no en la zona de origen del viaje — para traslados internos (p.ej. entre dos
@@ -201,7 +222,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       const zonaLlegada = zonaDeNombreCiudad(destino);
       const inicioUTC = localAUTC(fecha, hora, zonaSalida);
       const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaLlegada);
-      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino: zonaLlegada, confirmacion };
+      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino: zonaLlegada, confirmacion, escalas };
       if (existente) await actualizar(refTraslados.child(idExistente), datos);
       else await agregar(refTraslados, datos);
       cerrar();

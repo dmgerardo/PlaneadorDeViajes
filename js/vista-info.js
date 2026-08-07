@@ -41,7 +41,10 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
       <label>Fecha fin</label>
       <input id="in-fecha-fin" type="date" value="${esc(info.fechaFin || "")}" min="${esc(info.fechaInicio || "")}">
       <label>Ciudad de origen</label>
-      <input id="in-ciudad-origen" type="text" placeholder="Ej. CDMX" value="${esc(info.ciudadOrigen || "")}">
+      <div class="autocompletar-envoltura">
+        <input id="in-ciudad-origen" type="text" placeholder="Ej. CDMX" autocomplete="off" value="${esc(info.ciudadOrigen || "")}">
+        <div class="autocompletar-lista oculto" id="in-sugerencias-origen"></div>
+      </div>
       <label>Zona horaria de origen</label>
       <select id="in-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
       <label>Clave de invitación</label>
@@ -62,6 +65,36 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     document.getElementById("in-fecha-fin").addEventListener("change", e => actualizar(refInfo, { fechaFin: e.target.value }));
     document.getElementById("in-ciudad-origen").addEventListener("change", e => actualizar(refInfo, { ciudadOrigen: e.target.value.trim() }));
     document.getElementById("in-zona-origen").addEventListener("change", e => actualizar(refInfo, { zonaOrigen: e.target.value }));
+
+    // Mismo autocompletar del catálogo (js/catalogo-ciudades.js) que en el
+    // formulario de la pestaña Ciudades: elegir una sugerencia rellena sola
+    // la zona horaria de origen — sigue siendo un campo de texto normal si
+    // la ciudad no está en el catálogo.
+    const campoOrigen = document.getElementById("in-ciudad-origen");
+    const sugerenciasOrigen = document.getElementById("in-sugerencias-origen");
+    function ocultarSugerenciasOrigen() {
+      sugerenciasOrigen.classList.add("oculto");
+      sugerenciasOrigen.innerHTML = "";
+    }
+    campoOrigen.addEventListener("input", () => {
+      const resultados = buscarEnCatalogoCiudades(campoOrigen.value);
+      if (resultados.length === 0) { ocultarSugerenciasOrigen(); return; }
+      sugerenciasOrigen.innerHTML = resultados.map((c, i) =>
+        `<div class="autocompletar-item" data-idx="${i}">${esc(c.nombre)} <span style="color:var(--color-texto-suave)">— ${esc(c.pais)}</span></div>`
+      ).join("");
+      sugerenciasOrigen.classList.remove("oculto");
+      sugerenciasOrigen.querySelectorAll(".autocompletar-item").forEach((elItem, i) => {
+        elItem.addEventListener("mousedown", e => {
+          e.preventDefault();
+          const c = resultados[i];
+          campoOrigen.value = c.nombre;
+          document.getElementById("in-zona-origen").value = c.zonaHoraria;
+          ocultarSugerenciasOrigen();
+          actualizar(refInfo, { ciudadOrigen: c.nombre, zonaOrigen: c.zonaHoraria });
+        });
+      });
+    });
+    campoOrigen.addEventListener("blur", () => setTimeout(ocultarSugerenciasOrigen, 150));
   });
 
   const renderParticipantes = programarRender(participantes => {

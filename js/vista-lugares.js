@@ -11,7 +11,10 @@ const ETIQUETA_CATEGORIA_LUGAR = {
 async function montarVistaLugares(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta">
-      <h2>Lugares deseados</h2>
+      <div class="encabezado-seccion">
+        <h2>Lugares deseados</h2>
+        <button type="button" class="btn-agregar-circular" id="l-btn-agregar" aria-label="Agregar lugar" title="Agregar lugar">${icono("plus", 20)}</button>
+      </div>
       <div id="l-resumen" style="font-size:12.5px;color:var(--color-texto-suave);margin-bottom:8px;"></div>
       <label>Filtrar por ciudad</label>
       <select id="l-filtro-ciudad"><option value="">Todas</option></select>
@@ -24,7 +27,6 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
       </select>
     </div>
     <div id="l-lista"></div>
-    <button id="l-btn-agregar" style="position:sticky;bottom:12px;width:100%;">+ Agregar lugar</button>
   `;
 
   const refLugares = refNodo(tripId, "lugares");

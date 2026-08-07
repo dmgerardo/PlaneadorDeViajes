@@ -91,8 +91,11 @@ function calcularFranjaNoche(fechaStr, ciudad, zonaHoraria) {
 // Fondo CSS del área del día: líneas de hora + franja oscura en horario nocturno.
 function fondoConNoche(franja) {
   const pct = h => `${((Math.max(0, Math.min(24, h)) / 24) * 100).toFixed(3)}%`;
-  const noche = "rgba(32,30,29,0.22)";
-  const dia = "rgba(32,30,29,0)";
+  // --color-noche-cal cambia entre temas (ver estilos.css): en modo oscuro el
+  // fondo de la cuadrícula ya es oscuro de por sí, así que un tinte del mismo
+  // tono que en modo claro casi no se nota — se usa un tinte negro más fuerte.
+  const noche = colorCss("--color-noche-cal");
+  const dia = "rgba(0,0,0,0)";
   const lineas = `repeating-linear-gradient(to bottom, var(--color-borde) 0, var(--color-borde) 1px, transparent 1px, transparent var(--hora-px, 44px))`;
   const sombra = `linear-gradient(to bottom,
     ${noche} 0%, ${noche} ${pct(franja.amanecer)},
@@ -155,8 +158,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           <button class="secundario" id="ag-next">Siguiente →</button>
         </div>
       ` : ""}
-      <div class="cal-scroll">
-        <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-body">
+        <div class="cal-col-horas" id="cal-col-horas"></div>
+        <div class="cal-scroll">
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
       </div>
       <div class="tarjeta" style="margin-top:12px;">
         <h3 style="margin-bottom:4px;">Lugares sin agendar</h3>
@@ -180,6 +186,10 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   let lugarSeleccionado = null;
   let scrollInicialHecho = false;
   let diaAgendaActual = null;
+  // Ciudad del día que se está viendo en Agenda — se recalcula en cada
+  // render() y renderPendientes() la usa para no mezclar lugares de otras
+  // ciudades del viaje en la lista de "sin agendar" de ese día.
+  let ciudadDelDiaAgenda = null;
 
   function colorParaCiudad(ciudadId) {
     const ids = Object.keys(estado.ciudades);
@@ -218,13 +228,15 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
   function render() {
     const grid = document.getElementById("cal-grid");
+    const colHorasEl = document.getElementById("cal-col-horas");
     const pendientesEl = document.getElementById("cal-pendientes");
-    if (!grid || !pendientesEl) return;
+    if (!grid || !colHorasEl || !pendientesEl) return;
 
     asegurarDiaAgendaPorDefecto();
 
     const dias = modoAgenda ? (diaAgendaActual ? [diaAgendaActual] : []) : listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
     const ciudadPorDia = calcularCiudadPorDia(dias, estado.ciudadPorDiaManual, estado.ciudades, estado.traslados, estado.info.zonaOrigen || "America/Mexico_City");
+    ciudadDelDiaAgenda = (modoAgenda && diaAgendaActual && ciudadPorDia[diaAgendaActual]) ? ciudadPorDia[diaAgendaActual].ciudadId : null;
 
     if (modoAgenda) {
       const encabezado = document.getElementById("ag-fecha-actual");
@@ -247,11 +259,12 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     // En Agenda no hay encabezado de día dentro de la cuadrícula (ese dato ya
     // está en la barra de arriba), así que tampoco se reserva ese espacio aquí
     // — si no, las filas de hora quedan corridas respecto a los bloques.
-    const colHoras = document.createElement("div");
-    colHoras.className = "cal-col-horas";
-    colHoras.innerHTML = (modoAgenda ? "" : `<div class="cal-header">Hora<br>local</div>`) +
+    // Vive FUERA de #cal-grid (que es lo único que hace scroll horizontal en
+    // .cal-scroll) para que quede fija de verdad al deslizar los días — antes
+    // dependía de position:sticky dentro de la fila flex con scroll, y a veces
+    // dejaba de pegarse a la mitad del recorrido.
+    colHorasEl.innerHTML = (modoAgenda ? "" : `<div class="cal-header">Hora<br>local</div>`) +
       Array.from({ length: 24 }, (_, h) => `<div class="cal-hora-fila">${String(h).padStart(2, "0")}:00</div>`).join("");
-    grid.appendChild(colHoras);
 
     dias.forEach(dia => {
       const infoDia = ciudadPorDia[dia] || { etiqueta: "—", zonaHoraria: estado.info.zonaOrigen };
@@ -334,7 +347,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         const areaHoy = grid.querySelector(`.cal-area[data-dia="${hoyStr}"]`);
         const columnaHoy = areaHoy ? areaHoy.closest(".cal-dia") : null;
         const scrollEl = contenedor.querySelector(".cal-scroll");
-        if (columnaHoy && scrollEl) scrollEl.scrollLeft = Math.max(0, columnaHoy.offsetLeft - 56);
+        if (columnaHoy && scrollEl) scrollEl.scrollLeft = Math.max(0, columnaHoy.offsetLeft);
         scrollInicialHecho = true;
       }
     }
@@ -502,17 +515,28 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     if (!el) return;
     limpiar(el);
     const idsAgendados = new Set(Object.values(estado.itinerario).map(b => b.refId));
-    const ciudadesConDia = new Set(Object.values(estado.ciudadPorDiaManual).filter(Boolean));
     const todosPendientes = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
-    // Si ya se empezó a usar el timeline, solo ofrecemos lugares cuya ciudad
-    // tenga al menos un día asignado — así no se agenda algo donde no toca.
-    const listos = todosPendientes.filter(([, l]) => ciudadesConDia.size === 0 || ciudadesConDia.has(l.ciudadId));
-    const esperando = todosPendientes.length - listos.length;
+
+    let listos, mensajeVacio;
+    if (modoAgenda) {
+      // En Agenda solo tiene sentido ofrecer lugares de la ciudad de ESTE
+      // día — mostrar los de otras ciudades del viaje solo confunde.
+      listos = ciudadDelDiaAgenda ? todosPendientes.filter(([, l]) => l.ciudadId === ciudadDelDiaAgenda) : [];
+      mensajeVacio = ciudadDelDiaAgenda
+        ? "Sin lugares pendientes de esta ciudad."
+        : "Asigna la ciudad de este día en la pestaña Ruta para ver lugares pendientes.";
+    } else {
+      // En Calendario (todos los días) sí tiene sentido ofrecer lugares de
+      // cualquier ciudad que ya tenga al menos un día asignado.
+      const ciudadesConDia = new Set(Object.values(estado.ciudadPorDiaManual).filter(Boolean));
+      listos = todosPendientes.filter(([, l]) => ciudadesConDia.size === 0 || ciudadesConDia.has(l.ciudadId));
+      mensajeVacio = "Asigna ciudades a los días en la pestaña Ruta para poder agendar tus lugares.";
+    }
 
     if (listos.length === 0) {
       el.innerHTML = todosPendientes.length === 0
         ? '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>'
-        : '<p style="font-size:12px;color:var(--color-texto-suave)">Asigna ciudades a los días en la pestaña Ciudades para poder agendar tus lugares.</p>';
+        : `<p style="font-size:12px;color:var(--color-texto-suave)">${esc(mensajeVacio)}</p>`;
       return;
     }
     listos.forEach(([id, l]) => {
@@ -525,10 +549,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       });
       el.appendChild(chip);
     });
+    const esperando = todosPendientes.length - listos.length;
     if (esperando > 0) {
       const nota = document.createElement("p");
       nota.style.cssText = "font-size:11px;color:var(--color-texto-suave);width:100%;margin:4px 0 0;";
-      nota.textContent = `${esperando} más esperando a que asignes su ciudad en la pestaña Ciudades.`;
+      nota.textContent = modoAgenda
+        ? `${esperando} más en otras ciudades del viaje.`
+        : `${esperando} más esperando a que asignes su ciudad en la pestaña Ruta.`;
       el.appendChild(nota);
     }
   }
@@ -597,7 +624,7 @@ async function montarVistaAgendaCalendario(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="segmentado" id="ac-switch">
       <button type="button" data-modo="agenda">Día</button>
-      <button type="button" data-modo="cuadricula">Cuadrícula</button>
+      <button type="button" data-modo="cuadricula">Calendario</button>
     </div>
     <div id="ac-contenido"></div>
   `;

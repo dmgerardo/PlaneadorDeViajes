@@ -31,7 +31,7 @@ Contexto operativo completo del repo. Léelo antes de tocar código.
 - `vista-calendario.js` define `montarVistaCalendario(contenedor, tripId, sesion,
   { modoAgenda })` (cuadrícula completa o un solo día) y, al final del archivo,
   `montarVistaAgendaCalendario(contenedor, tripId, sesion)` — el wrapper que fusiona ambas
-  en una sola pestaña con un switch "Día/Cuadrícula" (`.segmentado`), y es lo que se monta
+  en una sola pestaña con un switch "Día/Calendario" (`.segmentado`), y es lo que se monta
   en el tab "Agenda". También define globals (`HORA_PX`, `COLORES_CIUDAD`, `colorCss`,
   `listaDeDias`) que `vista-ruta.js` reutiliza — por eso `vista-calendario.js` debe
   cargarse antes que `vista-ruta.js` en `viaje.html`.

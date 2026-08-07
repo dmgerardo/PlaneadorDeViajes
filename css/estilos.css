@@ -36,6 +36,10 @@
   --radio: 18px;
   --sombra: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
   --espacio: 12px;
+
+  /* Tinte de horario nocturno en Calendario/Agenda (vista-calendario.js,
+     fondoConNoche) — distinto por tema, ver el bloque @media de abajo. */
+  --color-noche-cal: rgba(32, 30, 29, 0.22);
 }
 
 /* La propuesta visual "Organic" es un tema claro único de origen, pero la
@@ -52,6 +56,9 @@
     --color-texto: #f2e9dc;
     --color-primario-oscuro: #e0955c;
     --sombra: 0 3px 10px rgba(0, 0, 0, 0.5);
+    /* Más fuerte y con más negro puro que en claro — sobre un fondo ya
+       oscuro, el mismo tono café a 22% casi no se distingue. */
+    --color-noche-cal: rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -341,9 +348,14 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 
 /* --- Vista calendario (cuadrícula) --- */
 .cal-wrap { max-width: 100%; padding: 8px; }
-.cal-scroll { overflow-x: auto; border: 1px solid var(--color-borde); border-radius: var(--radio); background: var(--color-superficie); }
+/* La columna de horas vive FUERA de .cal-scroll (ver vista-calendario.js) —
+   así queda realmente fija al deslizar los días, sin depender de
+   position:sticky dentro de una fila con scroll horizontal (con eso a veces
+   dejaba de pegarse a la mitad del recorrido). */
+.cal-body { display: flex; border: 1px solid var(--color-borde); border-radius: var(--radio); background: var(--color-superficie); }
+.cal-scroll { overflow-x: auto; flex: 1; min-width: 0; }
 .cal-grid { display: flex; min-width: max-content; }
-.cal-col-horas { flex: 0 0 56px; position: sticky; left: 0; background: var(--color-superficie); z-index: 5; border-right: 1px solid var(--color-borde); }
+.cal-col-horas { flex: 0 0 56px; border-right: 1px solid var(--color-borde); }
 .cal-header { height: 56px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: var(--color-texto-suave); border-bottom: 1px solid var(--color-borde); }
 .cal-hora-fila { height: var(--hora-px, 44px); font-size: 12px; color: var(--color-texto-suave); text-align: right; padding-right: 6px; border-top: 1px solid var(--color-borde); box-sizing: border-box; }
 .cal-dia { flex: 0 0 150px; border-right: 1px solid var(--color-borde); }

@@ -11,7 +11,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=26">
+<link rel="stylesheet" href="css/estilos.css?v=27">
 </head>
 <body>
   <div class="contenedor">
@@ -20,6 +20,17 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v27 — Ajustes a Agenda/Calendario</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-06</p>
+      <ul>
+        <li><strong>Corregido:</strong> el sombreado de horario nocturno en modo oscuro casi no se notaba (mismo tinte oscuro sobre un fondo que ya es oscuro) — ahora usa un tinte negro más fuerte en ese tema.</li>
+        <li>En Agenda, "Lugares sin agendar" ahora solo muestra los de la ciudad asignada a ese día — antes mezclaba lugares de todo el viaje.</li>
+        <li>La pestaña "Cuadrícula" se renombró a <strong>Calendario</strong>.</li>
+        <li><strong>Corregido:</strong> en Calendario, la columna de horas se ocultaba al hacer scroll horizontal más allá de la mitad — ahora queda fija de verdad, estructuralmente fuera del área que se desliza.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v26 — Varios ajustes: navegación, listas y escalas</h3>
@@ -261,7 +272,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=26"></script>
-  <script src="js/version.js?v=26"></script>
+  <script src="js/app-version.js?v=27"></script>
+  <script src="js/version.js?v=27"></script>
 </body>
 </html>

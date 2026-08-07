@@ -6,14 +6,18 @@
 async function montarVistaLogistica(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta">
-      <h3>Traslados</h3>
+      <div class="encabezado-seccion">
+        <h3>Traslados</h3>
+        <button type="button" class="btn-agregar-circular" id="lg-btn-traslado" aria-label="Agregar traslado" title="Agregar traslado">${icono("plus", 20)}</button>
+      </div>
       <div id="lg-traslados"></div>
-      <button id="lg-btn-traslado">+ Agregar traslado</button>
     </div>
     <div class="tarjeta">
-      <h3>Hospedajes</h3>
+      <div class="encabezado-seccion">
+        <h3>Hospedajes</h3>
+        <button type="button" class="btn-agregar-circular" id="lg-btn-hospedaje" aria-label="Agregar hospedaje" title="Agregar hospedaje">${icono("plus", 20)}</button>
+      </div>
       <div id="lg-hospedajes"></div>
-      <button id="lg-btn-hospedaje">+ Agregar hospedaje</button>
     </div>
   `;
 

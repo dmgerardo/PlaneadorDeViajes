@@ -287,6 +287,27 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .grupo-switch button.activo { background: var(--color-primario); color: var(--color-sobre-primario); border-color: var(--color-primario); }
 .btn-tema { padding: 6px; line-height: 0; }
 
+/* Encabezado de sección con botón "+" circular a la derecha, en vez de un
+   botón "+ Agregar" de ancho completo que siempre queda hasta abajo de la
+   lista (Ciudades, Traslados, Hospedajes, Lugares). */
+.encabezado-seccion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: var(--espacio);
+}
+.encabezado-seccion h2, .encabezado-seccion h3 { margin: 0; }
+.btn-agregar-circular {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Confirmación visual breve de "guardado" tras cada escritura a Firebase. */
 #toast {
   position: fixed;

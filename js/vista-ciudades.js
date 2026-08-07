@@ -6,9 +6,11 @@
 async function montarVistaCiudades(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta">
-      <h2>Ciudades</h2>
+      <div class="encabezado-seccion">
+        <h2>Ciudades</h2>
+        <button type="button" class="btn-agregar-circular" id="ci-btn-agregar" aria-label="Agregar ciudad" title="Agregar ciudad">${icono("plus", 20)}</button>
+      </div>
       <div id="ci-lista"></div>
-      <button id="ci-btn-agregar">+ Agregar ciudad</button>
     </div>
   `;
 

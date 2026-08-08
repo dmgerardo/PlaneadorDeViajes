@@ -11,14 +11,20 @@ function temaGuardado() {
   return valor === "claro" || valor === "oscuro" ? valor : null;
 }
 
+// Sin preferencia manual guardada, el default es SIEMPRE claro — ya no sigue
+// prefers-color-scheme del sistema (antes un celular en modo oscuro abría la
+// app en oscuro sin que nadie lo hubiera pedido). El alternador de tema
+// sigue disponible para quien prefiera oscuro.
 function temaEfectivo() {
-  return temaGuardado() || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "oscuro" : "claro");
+  return temaGuardado() || "claro";
 }
 
 function aplicarTemaGuardado() {
-  const guardado = temaGuardado();
-  if (guardado) document.documentElement.setAttribute("data-theme", guardado);
-  else document.documentElement.removeAttribute("data-theme");
+  // Siempre se fija data-theme explícito (nunca se quita el atributo): así
+  // :root[data-theme="claro"] (ver estilos.css) le gana en especificidad al
+  // @media (prefers-color-scheme: dark) del sistema operativo, y "claro" es
+  // de verdad el default aunque el celular esté en modo oscuro.
+  document.documentElement.setAttribute("data-theme", temaGuardado() || "claro");
 }
 
 function alternarTema() {

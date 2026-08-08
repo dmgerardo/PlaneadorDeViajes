@@ -42,13 +42,16 @@
   --color-noche-cal: rgba(32, 30, 29, 0.22);
 }
 
-/* La propuesta visual "Organic" es un tema claro único de origen, pero la
-   app sigue el modo claro/oscuro del sistema operativo (petición explícita
-   de la persona de 17 años del análisis de UX — pantalla beige a full
-   brillo de noche en el metro). Solo se invierten fondo/superficie/texto;
-   los colores de acento (naranja, colores de ciudad, traslado/hospedaje)
-   se mantienen iguales en ambos temas — ya funcionan sobre superficie clara
-   u oscura sin perder legibilidad. */
+/* La propuesta visual "Organic" es un tema claro único de origen; el modo
+   oscuro es opcional (botón #btn-tema, js/tema.js) — el default siempre es
+   claro, sin importar el tema del sistema operativo (js/tema.js fija
+   data-theme="claro" explícitamente si la persona nunca tocó el botón, lo
+   que le gana en especificidad a este @media). Este bloque solo queda como
+   red de seguridad para el instante antes de que tema.js corra, o si algún
+   día se decide volver a seguir el sistema. Solo se invierten
+   fondo/superficie/texto; los colores de acento (naranja, colores de
+   ciudad, traslado/hospedaje) se mantienen iguales en ambos temas — ya
+   funcionan sobre superficie clara u oscura sin perder legibilidad. */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-fondo: #1c1815;
@@ -63,10 +66,10 @@
 }
 
 /* Alternador manual de tema (js/tema.js, botón #btn-tema): mismos pares de
-   variables que el @media de arriba, pero por atributo en <html> — así
-   gana sobre prefers-color-scheme cuando la persona usuaria elige un tema
-   a mano. Sin data-theme (nunca tocó el botón), sigue mandando el sistema
-   operativo como antes. */
+   variables que el @media de arriba, pero por atributo en <html> — así le
+   gana en especificidad a prefers-color-scheme. js/tema.js siempre fija
+   data-theme ("claro" por default, o lo último que la persona haya elegido
+   a mano), así que en la práctica uno de estos dos bloques siempre manda. */
 :root[data-theme="oscuro"] {
   --color-fondo: #1c1815;
   --color-superficie: #262019;

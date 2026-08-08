@@ -12,6 +12,7 @@ const ARCHIVOS_APP_SHELL = [
   "index.html",
   "viaje.html",
   "historial.html",
+  "licencia.html",
   "manifest.json",
   `css/estilos.css?v=${APP_VERSION}`,
   `js/app-version.js?v=${APP_VERSION}`,

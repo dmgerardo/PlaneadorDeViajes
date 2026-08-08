@@ -198,6 +198,20 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     return colorCss(COLORES_CIUDAD[idx % COLORES_CIUDAD.length]);
   }
 
+  // Zona horaria real de una ciudad por nombre (la de origen del viaje, o
+  // alguna de "ciudades") — mismo helper que vista-logistica.js/vista-ruta.js.
+  // Se usa para saber en qué día(s) cae un traslado/hospedaje según SU PROPIA
+  // ciudad, nunca según la zona de la columna donde se esté dibujando (ver
+  // nota en el filtro de traslados de abajo — usar la zona de la columna ahí
+  // causaba que un traslado sin relación con esa ciudad "se colara" en el día
+  // equivocado, solo por la aritmética de husos horarios muy separados).
+  function zonaDeNombreCiudad(nombre) {
+    if (!nombre) return estado.info.zonaOrigen || "America/Mexico_City";
+    if (nombre === estado.info.ciudadOrigen) return estado.info.zonaOrigen || "America/Mexico_City";
+    const ciudad = Object.values(estado.ciudades).find(c => c.nombre === nombre);
+    return ciudad ? ciudad.zonaHoraria : (estado.info.zonaOrigen || "America/Mexico_City");
+  }
+
   function horaLocalDecimal(isoUTC, zonaHoraria) {
     const fecha = new Date(isoUTC);
     const partes = new Intl.DateTimeFormat("en-US", { timeZone: zonaHoraria, hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).formatToParts(fecha);
@@ -313,15 +327,24 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         .filter(([, b]) => fechaISO(b.inicioUTC, infoDia.zonaHoraria) === dia)
         .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria, ciudadPorDia));
 
-      // Traslados que tocan este día en la zona LOCAL de la columna (no la
-      // fecha UTC cruda) — un traslado largo (vuelo internacional de +10h,
-      // por ejemplo) puede tocar dos días; se dibuja un segmento recortado
-      // en cada uno (ver pintarBloqueFijo). Usa su duración real (fin de
-      // trayecto) si ya se capturó, o 1h como referencia si es un traslado viejo.
+      // Traslados que tocan este día: el día de salida (hora local del
+      // ORIGEN) o el de llegada (hora local del DESTINO) — nunca la zona de
+      // la columna que se está dibujando. Usar la zona de la columna aquí
+      // fue un bug real: un traslado sin relación con esa ciudad podía
+      // "colarse" en el día equivocado solo porque, al convertir su
+      // inicio/fin a una zona horaria muy distinta (p.ej. Tokio, +9h), la
+      // aritmética cruzaba por casualidad la medianoche de esa zona ajena.
+      // Un traslado largo (vuelo internacional de +10h) sí puede tocar dos
+      // días DE VERDAD (el de salida y el de llegada) — se dibuja un
+      // segmento recortado en cada uno (ver pintarBloqueFijo). Usa su
+      // duración real (fin de trayecto) si ya se capturó, o 1h como
+      // referencia si es un traslado viejo.
       Object.entries(estado.traslados)
         .filter(([, t]) => {
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
-          return fechaISO(t.inicioUTC, infoDia.zonaHoraria) <= dia && dia <= fechaISO(fin, infoDia.zonaHoraria);
+          const diaSalida = fechaISO(t.inicioUTC, zonaDeNombreCiudad(t.origen));
+          const diaLlegada = fechaISO(fin, zonaDeNombreCiudad(t.destino));
+          return dia === diaSalida || dia === diaLlegada;
         })
         .forEach(([id, t]) => {
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
@@ -330,15 +353,17 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado", dia);
         });
 
-      // Hospedajes: un bloque el día de check-in y otro el día de check-out.
+      // Hospedajes: un bloque el día de check-in y otro el día de check-out,
+      // según la zona de la CIUDAD del hospedaje (no la de la columna —
+      // mismo motivo que en traslados de arriba).
       Object.entries(estado.hospedajes)
-        .filter(([, h]) => h.checkinUTC && fechaISO(h.checkinUTC, infoDia.zonaHoraria) === dia)
+        .filter(([, h]) => h.checkinUTC && fechaISO(h.checkinUTC, zonaDeNombreCiudad(h.ciudad)) === dia)
         .forEach(([id, h]) => {
           const noches = h.noches ? ` (${h.noches} noche${h.noches > 1 ? "s" : ""})` : "";
           pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia);
         });
       Object.entries(estado.hospedajes)
-        .filter(([, h]) => h.checkoutUTC && fechaISO(h.checkoutUTC, infoDia.zonaHoraria) === dia)
+        .filter(([, h]) => h.checkoutUTC && fechaISO(h.checkoutUTC, zonaDeNombreCiudad(h.ciudad)) === dia)
         .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia));
 
       grid.appendChild(col);

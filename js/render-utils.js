@@ -192,3 +192,67 @@ function opcionesZonaHoraria(seleccionada) {
     `<option value="${esc(z)}"${z === seleccionada ? " selected" : ""}>${esc(z.replace(/_/g, " "))}</option>`
   ).join("");
 }
+
+// Códigos de moneda ISO 4217 soportados por el navegador, mismo patrón que
+// ZONAS_HORARIAS de arriba (lista nativa + fallback corto si el navegador
+// no soporta Intl.supportedValuesOf).
+const MONEDAS = (typeof Intl.supportedValuesOf === "function")
+  ? Intl.supportedValuesOf("currency")
+  : ["MXN", "USD", "EUR", "GBP", "CAD", "JPY", "CNY", "ARS", "COP", "PEN", "CLP", "BRL", "AUD", "CHF"];
+
+function opcionesMoneda(seleccionada) {
+  const valor = seleccionada || "MXN";
+  const lista = MONEDAS.includes(valor) ? MONEDAS : [valor, ...MONEDAS];
+  return lista.map(m => `<option value="${esc(m)}"${m === valor ? " selected" : ""}>${esc(m)}</option>`).join("");
+}
+
+// Campos de costo compartidos por los formularios de Traslados, Hospedajes
+// y Lugares (costo opcional, si cubre a todo el grupo o es por persona, y en
+// qué moneda) — evita triplicar el mismo bloque en cada vista. idPrefix
+// evita colisión de ids entre los tres formularios (ej. "ft", "fh", "fl").
+// defaultTipoNuevo es el valor sugerido solo para una captura nueva (p.ej.
+// "porPersona" tiene más sentido para un lugar/actividad que para un vuelo).
+function camposCosto(idPrefix, existente, defaultTipoNuevo) {
+  const costo = existente && existente.costo != null ? existente.costo : "";
+  const costoTipo = (existente && existente.costoTipo) || defaultTipoNuevo || "total";
+  const moneda = (existente && existente.moneda) || "MXN";
+  return `
+    <label for="${idPrefix}-costo">Costo (opcional)</label>
+    <input id="${idPrefix}-costo" type="number" min="0" step="0.01" placeholder="0.00" value="${esc(costo)}">
+    <label for="${idPrefix}-costo-tipo">¿Es el total o por persona?</label>
+    <select id="${idPrefix}-costo-tipo">
+      <option value="total"${costoTipo === "total" ? " selected" : ""}>Total (cubre a todos los viajeros)</option>
+      <option value="porPersona"${costoTipo === "porPersona" ? " selected" : ""}>Por persona</option>
+    </select>
+    <label for="${idPrefix}-moneda">Moneda</label>
+    <select id="${idPrefix}-moneda">${opcionesMoneda(moneda)}</select>
+  `;
+}
+
+// Lee los tres campos pintados por camposCosto(). costo queda en null si se
+// deja en blanco — así el reporte de costos (pestaña Info) sabe que ese
+// ítem todavía no tiene costo capturado, en vez de contarlo como $0.
+function leerCamposCosto(modal, idPrefix) {
+  const crudo = modal.querySelector(`#${idPrefix}-costo`).value;
+  const numero = Number(crudo);
+  const costo = crudo === "" || !Number.isFinite(numero) ? null : numero;
+  const costoTipo = modal.querySelector(`#${idPrefix}-costo-tipo`).value;
+  const moneda = modal.querySelector(`#${idPrefix}-moneda`).value;
+  return { costo, costoTipo, moneda };
+}
+
+// Formatea un costo con su símbolo/código de moneda (Intl.NumberFormat) y,
+// si es "por persona", agrega la etiqueta — usado en las filas de
+// Traslados/Hospedajes/Lugares y en el reporte de costos de Info. Si la
+// moneda no es un código ISO 4217 válido (dato viejo o escrito a mano en
+// otra parte), cae a un texto plano en vez de lanzar una excepción.
+function formatoCosto(costo, costoTipo, moneda) {
+  if (costo === null || costo === undefined || costo === "") return "";
+  let monto;
+  try {
+    monto = new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda || "MXN", maximumFractionDigits: 2 }).format(costo);
+  } catch (e) {
+    monto = `${costo} ${moneda || ""}`.trim();
+  }
+  return costoTipo === "porPersona" ? `${monto}/persona` : monto;
+}

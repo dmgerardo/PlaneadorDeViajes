@@ -73,7 +73,10 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
               <strong>${esc(l.nombre)}</strong> ${l.aireLibre ? icono("snowflake", 13) : ""}<br>
-              <span style="font-size:12px;color:var(--color-texto-suave)">${esc(ciudad ? ciudad.nombre : "Sin ciudad")}</span>
+              <span style="font-size:12px;color:var(--color-texto-suave)">
+                ${esc(ciudad ? ciudad.nombre : "Sin ciudad")}
+                ${l.costo != null ? ` · ${esc(formatoCosto(l.costo, l.costoTipo, l.moneda))}` : ""}
+              </span>
             </div>
             <span class="chip ${esc(l.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[l.categoria] || l.categoria)}</span>
           </div>
@@ -154,6 +157,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
         </label>
         <label for="fl-notas">Notas</label>
         <textarea id="fl-notas" placeholder="Opcional">${esc(existente ? (existente.notas || "") : "")}</textarea>
+        ${camposCosto("fl", existente, "porPersona")}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fl-cancelar">Cancelar</button>
@@ -181,10 +185,11 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
       const notas = modal.querySelector("#fl-notas").value.trim();
       if (!nombre || !ciudadId) return;
 
+      const { costo, costoTipo, moneda } = leerCamposCosto(modal, "fl");
       const datos = {
         nombre, ciudadId, categoria, liga_mapa,
         ligas: ligaExtra ? [ligaExtra] : [],
-        aireLibre, notas
+        aireLibre, notas, costo, costoTipo, moneda
       };
       if (existente) await actualizar(refLugares.child(idExistente), datos);
       else await agregar(refLugares, datos);

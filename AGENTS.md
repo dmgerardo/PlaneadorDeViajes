@@ -78,21 +78,33 @@ viajes/{tripId}:
   // amanecer/atardecer real y sombrear la noche en Calendario/Agenda
   // (vista-calendario.js: calcularSolUTC/calcularFranjaNoche). Sin coordenadas, esa
   // vista usa un rango fijo de referencia 20:00–06:00.
-  lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas }
+  lugares/{lugarId}: { nombre, ciudadId, categoria, liga_mapa, ligas: [...], aireLibre, notas,
+                        costo, costoTipo, moneda }
   itinerario/{bloqueId}: { tipo: "lugar", refId, ciudadId, inicioUTC, finUTC, fijado }
   ciudadPorDia/{fecha}: ciudadId  // asignación explícita del timeline; fecha = "AAAA-MM-DD"
-  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion, escalas }
+  traslados/{trasladoId}: { tipo, origen, destino, inicioUTC, finUTC, zonaDestino, confirmacion,
+                             escalas, costo, costoTipo, moneda }
   // escalas: string[] opcional, nombres de ciudad en orden (mismo universo que
   // origen/destino — ver opcionesCiudadesTraslado()). Es solo informativo: no
   // tiene horas propias, el traslado sigue siendo un único bloque de
   // inicioUTC a finUTC en Calendario/Agenda.
-  hospedajes/{hospedajeId}: { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion }
+  hospedajes/{hospedajeId}: { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion,
+                               costo, costoTipo, moneda }
   // origen/destino/ciudad son nombres (texto) elegidos de la lista combinada
   // info.ciudadOrigen + nombres de "ciudades" — ver opcionesCiudadesTraslado() en
   // vista-generales.js. inicioUTC/checkinUTC SIEMPRE se calculan con
   // zonaDeNombreCiudad(nombre), es decir la hora LOCAL de esa ciudad concreta —
   // nunca con info.zonaOrigen a menos que esa ciudad sea justo la de origen. No
   // reintroduzcas "zona = infoCache.zonaOrigen" como default para estas horas.
+  // costo/costoTipo/moneda (traslados, hospedajes, lugares): costo es opcional
+  // (null si no se ha capturado — así el reporte no lo cuenta como $0).
+  // costoTipo es "total" (cubre a todos los viajeros) o "porPersona"; moneda es
+  // un código ISO 4217 ("MXN", "USD"…). Compartido entre los tres formularios
+  // vía camposCosto()/leerCamposCosto() (render-utils.js) — no dupliques esos
+  // campos a mano en una vista nueva. El reporte de costos (pestaña Info,
+  // vista-info.js: calcularReporteCostos) agrupa por moneda sin convertir entre
+  // ellas (no hay tipo de cambio en la app) y multiplica los "porPersona" por
+  // el número de participantes para sumarlos junto con los que ya son el total.
   checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden, categoria }
   // categoria: "empaque" (antes de viajar) | "viaje" (durante el viaje) — sin categoria
   // se trata como "empaque" (ítems de antes de que existiera el campo). El orden es

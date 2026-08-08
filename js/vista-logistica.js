@@ -91,6 +91,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             ${esc(formatoFecha(t.inicioUTC, zonaSalida))} ${esc(formatoHora(t.inicioUTC, zonaSalida))} hora de ${esc(t.origen)}
             ${duracion ? ` · Duración: ${esc(duracion)}` : ""} ·
             Confirmación: ${esc(t.confirmacion || "-")}
+            ${t.costo != null ? ` · ${esc(formatoCosto(t.costo, t.costoTipo, t.moneda))}` : ""}
           </span>
         </div>
         <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
@@ -121,6 +122,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
             ${h.checkoutUTC ? ` · Check-out: ${esc(formatoFecha(h.checkoutUTC, zona))}` : ""}
             ${h.noches ? ` · ${h.noches} noche${h.noches > 1 ? "s" : ""}` : ""} ·
             Confirmación: ${esc(h.claveReservacion || "-")}
+            ${h.costo != null ? ` · ${esc(formatoCosto(h.costo, h.costoTipo, h.moneda))}` : ""}
           </span>
         </div>
         <span class="lista-item-chevron">${icono("chevron-right", 18)}</span>
@@ -167,6 +169,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <input id="ft-hora-llegada" type="time" value="${esc(valFinHora)}" required>
         <label for="ft-confirmacion">Clave/número de confirmación</label>
         <input id="ft-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.confirmacion || "") : "")}">
+        ${camposCosto("ft", existente)}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="ft-cancelar">Cancelar</button>
@@ -226,7 +229,8 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       const zonaLlegada = zonaDeNombreCiudad(destino);
       const inicioUTC = localAUTC(fecha, hora, zonaSalida);
       const finUTC = localAUTC(fechaLlegada, horaLlegada, zonaLlegada);
-      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino: zonaLlegada, confirmacion, escalas };
+      const { costo, costoTipo, moneda } = leerCamposCosto(modal, "ft");
+      const datos = { tipo, origen, destino, inicioUTC, finUTC, zonaDestino: zonaLlegada, confirmacion, escalas, costo, costoTipo, moneda };
       if (existente) await actualizar(refTraslados.child(idExistente), datos);
       else await agregar(refTraslados, datos);
       cerrar();
@@ -256,6 +260,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <input id="fh-noches" type="number" min="1" step="1" value="${esc(existente ? (existente.noches || 1) : 1)}" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>
         <input id="fh-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.claveReservacion || "") : "")}">
+        ${camposCosto("fh", existente)}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fh-cancelar">Cancelar</button>
@@ -285,7 +290,8 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
       const zona = zonaDeNombreCiudad(ciudad);
       const checkinUTC = localAUTC(fecha, "15:00", zona);
       const checkoutUTC = localAUTC(sumarDias(fecha, noches), "11:00", zona);
-      const datos = { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion };
+      const { costo, costoTipo, moneda } = leerCamposCosto(modal, "fh");
+      const datos = { nombre, ciudad, checkinUTC, checkoutUTC, noches, claveReservacion, costo, costoTipo, moneda };
       if (existente) await actualizar(refHospedajes.child(idExistente), datos);
       else await agregar(refHospedajes, datos);
       cerrar();

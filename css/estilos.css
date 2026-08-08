@@ -596,18 +596,9 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .ct-fecha { font-weight: 700; font-family: var(--font-heading); flex: 0 0 auto; }
 .ct-ciudad { font-size: 13px; }
 
-/* Manija de reordenar filas del Checklist (⠿⠿, ver vista-checklist.js):
-   touch-action:none evita que el navegador interprete el arrastre como un
-   gesto de scroll; user-select/-webkit-touch-callout:none evitan que
-   seleccione texto (mouse) o abra la lupa/menú de selección (iOS) al
-   mantener presionado — ambos son justo lo que rompía el reordenamiento
-   (el gesto nativo tomaba el control antes de que empezara el drag). */
-.chk-handle {
-  cursor: grab; touch-action: none; user-select: none;
-  -webkit-user-select: none; -webkit-touch-callout: none;
-}
-/* Mientras se arrastra una fila, todo el cuerpo de la tabla queda sin
-   selección — si solo se protegiera la celda de la manija, el navegador
-   podía seguir seleccionando el texto de las celdas vecinas por las que
-   pasa el dedo/cursor durante el arrastre. */
-#chk-tabla.arrastrando-fila { user-select: none; -webkit-user-select: none; }
+/* Reordenar filas del Checklist: botones ↑/↓ por renglón (ver
+   vista-checklist.js) — reemplazan la manija de arrastre ⠿⠿ anterior, que
+   el navegador competía por interpretar como selección de texto o como el
+   menú/lupa de selección en móvil incluso con preventDefault(). Un botón es
+   un gesto que no se presta a esa ambigüedad. */
+#chk-tabla button[data-mover]:disabled { opacity: 0.3; cursor: default; }

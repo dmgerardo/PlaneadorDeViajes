@@ -597,23 +597,23 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} origen</div>`
       : "";
     // Liga directa a Mapa/sitio web del lugar (capturadas en la pestaña
-    // Lugares) — abren en otra pestaña sin pasar por esa sección. Van del
-    // lado izquierdo del bloque, en espejo con fijar/quitar (derecha).
-    // data-accion las excluye del arrastre igual que fijar/quitar (ver
-    // habilitarArrastre, que ignora cualquier "[data-accion]" al iniciar).
+    // Lugares) — abren en otra pestaña sin pasar por esa sección. Van en
+    // línea justo después del título, con margen, para que se noten como
+    // acciones propias del lugar y no se confundan con fijar/quitar
+    // (esquinas del bloque). data-accion las excluye del arrastre igual
+    // que fijar/quitar (ver habilitarArrastre, que ignora cualquier
+    // "[data-accion]" al iniciar).
     const ligaWeb = (lugar.ligas || [])[0];
     const accionMapa = lugar.liga_mapa
-      ? `<a class="accion-mapa" data-accion="mapa" href="${esc(lugar.liga_mapa)}" target="_blank" rel="noopener noreferrer" title="Ver en el mapa" onclick="event.stopPropagation()">${icono("map", 13)}</a>`
+      ? `<a class="accion-liga" data-accion="mapa" href="${esc(lugar.liga_mapa)}" target="_blank" rel="noopener noreferrer" title="Ver en el mapa" onclick="event.stopPropagation()">${icono("map", 13)}</a>`
       : "";
     const accionWeb = ligaWeb
-      ? `<a class="accion-web" data-accion="web" href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer" title="Sitio web" onclick="event.stopPropagation()">${icono("link", 13)}</a>`
+      ? `<a class="accion-liga" data-accion="web" href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer" title="Sitio web" onclick="event.stopPropagation()">${icono("link", 13)}</a>`
       : "";
     div.innerHTML = `
       <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? icono("lock", 13) : icono("pin", 13)}</span>
       <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">${icono("x", 13)}</span>
-      ${accionMapa}
-      ${accionWeb}
-      <div class="titulo">${lugar.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(lugar.nombre)}</div>
+      <div class="titulo">${lugar.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(lugar.nombre)}${accionMapa}${accionWeb}</div>
       <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}</div>
       ${horaOrigenTxt}
       ${bloque.fijado ? "" : '<div class="resize"></div>'}

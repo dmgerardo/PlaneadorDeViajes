@@ -3,4 +3,4 @@
 // commit que lo generó. Separado de js/version.js (que sí usa `document`)
 // porque sw.js también necesita este valor vía importScripts(), y un
 // service worker no tiene acceso a `document`/`window`.
-const APP_VERSION = "55";
+const APP_VERSION = "56";

@@ -707,25 +707,26 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     const accionWeb = ligaWeb
       ? `<a class="accion-liga" data-accion="web" href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer" title="Sitio web" onclick="event.stopPropagation()">${icono("link", 13)}</a>`
       : "";
-    // Insignia de prioridad (esquina superior izquierda): "‼" no negociable,
-    // "!" importante — nada para deseable, que es la prioridad base y no
-    // necesita destacarse. Puramente informativa (pointer-events:none en
-    // CSS), no compite con el tap-para-info ni con el arrastre.
+    // Insignia de prioridad: "‼" no negociable, "!" importante — nada para
+    // deseable, que es la prioridad base y no necesita destacarse.
     const INSIGNIA_PRIORIDAD = { no_negociable: "‼", importante: "!" };
     const badgePrioridad = INSIGNIA_PRIORIDAD[lugar.categoria]
       ? `<span class="badge-prioridad" title="${esc(ETIQUETA_CATEGORIA_LUGAR[lugar.categoria] || lugar.categoria)}">${INSIGNIA_PRIORIDAD[lugar.categoria]}</span>`
       : "";
-    // Insignia de aire libre (esquina inferior izquierda) — antes vivía
-    // pegada al nombre en el título; separada para que el título quede solo
-    // con el nombre y las ligas.
     const badgeAireLibre = lugar.aireLibre
       ? `<span class="badge-aire" title="Actividad al aire libre (requiere ropa de intemperie)">${icono("snowflake", 12)}</span>`
+      : "";
+    // Todas las insignias puramente informativas (prioridad, aire libre) van
+    // juntas en la esquina inferior izquierda — pointer-events:none en el
+    // contenedor (ver estilos.css), no compiten con el tap-para-info ni con
+    // el arrastre.
+    const badgesInferior = (badgePrioridad || badgeAireLibre)
+      ? `<div class="badges-inferior">${badgePrioridad}${badgeAireLibre}</div>`
       : "";
     div.innerHTML = `
       <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? icono("lock", 13) : icono("pin", 13)}</span>
       <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">${icono("x", 13)}</span>
-      ${badgePrioridad}
-      ${badgeAireLibre}
+      ${badgesInferior}
       <div class="titulo">${esc(lugar.nombre)}${accionMapa}${accionWeb}</div>
       <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}</div>
       ${horaOrigenTxt}

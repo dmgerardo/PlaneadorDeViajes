@@ -539,17 +539,17 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-bloque .resize::before {
   content: ""; position: absolute; top: -15px; bottom: -15px; left: 0; right: 0;
 }
-/* Insignias puramente informativas (prioridad arriba-izquierda, aire libre
-   abajo-izquierda) — pointer-events:none para que nunca intercepten el tap
-   (abre el modal de info) ni el arrastre; solo son visuales, a diferencia
-   de accion-fijar/accion-quitar/accion-liga que sí son botones. */
-.cal-bloque .badge-prioridad {
-  position: absolute; top: 1px; left: 4px; font-size: 13px; font-weight: 800;
-  line-height: 1; opacity: 0.95; pointer-events: none;
+/* Insignias puramente informativas (prioridad, aire libre) juntas en la
+   esquina inferior izquierda — pointer-events:none en el contenedor para
+   que nunca intercepten el tap (abre el modal de info) ni el arrastre;
+   solo son visuales, a diferencia de accion-fijar/accion-quitar/accion-liga
+   que sí son botones. */
+.cal-bloque .badges-inferior {
+  position: absolute; bottom: 3px; left: 4px; display: flex; align-items: center;
+  gap: 4px; pointer-events: none;
 }
-.cal-bloque .badge-aire {
-  position: absolute; bottom: 3px; left: 4px; opacity: 0.9; pointer-events: none;
-}
+.cal-bloque .badge-prioridad { font-size: 13px; font-weight: 800; line-height: 1; opacity: 0.95; }
+.cal-bloque .badge-aire { display: flex; opacity: 0.9; }
 .cal-bloque.cat-deseable { border-color: rgba(255,242,235,0.5); }
 .cal-bloque.cat-importante { border-color: #fff2eb; }
 .cal-bloque.cat-no_negociable { border-color: #fff2eb; border-width: 3px; }

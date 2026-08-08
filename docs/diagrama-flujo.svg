@@ -14,7 +14,7 @@
     .grptitle { font-size: 12px; fill: #777; font-weight: 600; }
   </style>
 
-  <text x="20" y="28" font-size="20" font-weight="700" fill="#111">Planeador de Viajes — Diagrama de flujo</text>
+  <text x="20" y="28" font-size="20" font-weight="700" fill="#111">Planeador de Viajes Familiar — Diagrama de flujo</text>
 
   <!-- Auth group -->
   <rect class="grp" x="20" y="50" width="1140" height="110"/>

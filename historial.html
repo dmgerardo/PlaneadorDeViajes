@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=32"></script>
-<title>Historial de cambios — Planeador</title>
+<script src="js/tema.js?v=33"></script>
+<title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=32">
+<link rel="stylesheet" href="css/estilos.css?v=33">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,31 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v33 — Renombrar/eliminar viaje, nombre de la app</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-07</p>
+      <ul>
+        <li>El admin del viaje ahora puede <strong>renombrarlo</strong> (botón "Renombrar" junto al título, en Info) o <strong>eliminarlo por completo</strong> (botón "Eliminar viaje", pide escribir el nombre exacto para confirmar — borra el viaje para todos los participantes, no se puede deshacer).</li>
+        <li>La app se renombró a <strong>Planeador de Viajes Familiar</strong> (título, pantalla de inicio, manifest).</li>
+      </ul>
+    </div>
+
+    <div class="tarjeta">
+      <h3>v32 — Botón "+" circular en vez de "+ Agregar"</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-07</p>
+      <ul>
+        <li>En Ciudades, Traslados, Hospedajes y Lugares, el botón "+ Agregar..." de ancho completo (que quedaba hasta abajo de la lista) se reemplazó por un botón circular con icono "+", junto al título de la sección.</li>
+      </ul>
+    </div>
+
+    <div class="tarjeta">
+      <h3>v31 — Alternar modo claro/oscuro a mano</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-07</p>
+      <ul>
+        <li>Nuevo botón en la barra superior (dentro de un viaje) para forzar modo claro u oscuro, sin depender del tema del sistema operativo. La preferencia se recuerda y aplica en toda la app.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v30 — Flujo guiado: progreso de planeación</h3>
@@ -303,7 +328,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=32"></script>
-  <script src="js/version.js?v=32"></script>
+  <script src="js/app-version.js?v=33"></script>
+  <script src="js/version.js?v=33"></script>
 </body>
 </html>

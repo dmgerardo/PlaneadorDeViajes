@@ -1,6 +1,6 @@
 {
-  "name": "Planeador de Viajes",
-  "short_name": "Planeador",
+  "name": "Planeador de Viajes Familiar",
+  "short_name": "Planeador Familiar",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f5ead8",

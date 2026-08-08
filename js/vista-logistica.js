@@ -139,9 +139,13 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
     const existente = idExistente ? trasladosCache[idExistente] : null;
     const zonaOrigenDefault = existente ? zonaDeNombreCiudad(existente.origen) : zonaDeNombreCiudad(infoCache.ciudadOrigen || "");
     const zonaDestinoDefault = existente ? zonaDeNombreCiudad(existente.destino) : "";
-    const valInicioFecha = existente ? fechaISO(existente.inicioUTC, zonaOrigenDefault) : "";
+    // Sin esto, un <input type="date"> vacío abre el selector nativo en la
+    // fecha de HOY (sobre todo notorio en iOS) aunque el viaje sea dentro de
+    // varios meses — precargar la fecha de inicio del viaje evita ese salto
+    // y ya cae dentro del rango de limitesFecha().
+    const valInicioFecha = existente ? fechaISO(existente.inicioUTC, zonaOrigenDefault) : (infoCache.fechaInicio || "");
     const valInicioHora = existente ? formatoHora(existente.inicioUTC, zonaOrigenDefault) : "09:00";
-    const valFinFecha = existente && existente.finUTC ? fechaISO(existente.finUTC, zonaDestinoDefault || zonaOrigenDefault) : "";
+    const valFinFecha = existente && existente.finUTC ? fechaISO(existente.finUTC, zonaDestinoDefault || zonaOrigenDefault) : (infoCache.fechaInicio || "");
     const valFinHora = existente && existente.finUTC ? formatoHora(existente.finUTC, zonaDestinoDefault || zonaOrigenDefault) : "12:00";
 
     const { modal, cerrar } = abrirModal(`
@@ -257,7 +261,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <label for="fh-ciudad">Ciudad</label>
         <select id="fh-ciudad" required>${opcionesCiudadesTraslado(existente ? existente.ciudad : infoCache.ciudadOrigen || "")}</select>
         <label for="fh-fecha">Fecha de check-in</label>
-        <input id="fh-fecha" type="date" required value="${esc(existente ? fechaISO(existente.checkinUTC, zonaDeNombreCiudad(existente.ciudad)) : "")}"${limitesFecha()}>
+        <input id="fh-fecha" type="date" required value="${esc(existente ? fechaISO(existente.checkinUTC, zonaDeNombreCiudad(existente.ciudad)) : (infoCache.fechaInicio || ""))}"${limitesFecha()}>
         <label for="fh-noches">Número de noches</label>
         <input id="fh-noches" type="number" min="1" step="1" value="${esc(existente ? (existente.noches || 1) : 1)}" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>

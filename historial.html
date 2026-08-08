@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=39"></script>
+<script src="js/tema.js?v=40"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=39">
+<link rel="stylesheet" href="css/estilos.css?v=40">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v40 — Ícono de calendario propio (arreglo real en iPhone) y fecha por default del viaje</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li><strong>Corregido:</strong> el intento anterior de arreglar el ícono del calendario (v39) no se veía en iPhone/Safari — ahora se dibuja un ícono propio (no depende del navegador), visible igual en Chrome, Safari y iOS.</li>
+        <li><strong>Corregido:</strong> al agregar un traslado u hospedaje, la fecha ya no arranca vacía (lo que hacía que el selector nativo, sobre todo en iPhone, abriera en el día de hoy) — ahora precarga la fecha de inicio del viaje.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v39 — Ícono de calendario en los campos de fecha</h3>
@@ -383,7 +392,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=39"></script>
-  <script src="js/version.js?v=39"></script>
+  <script src="js/app-version.js?v=40"></script>
+  <script src="js/version.js?v=40"></script>
 </body>
 </html>

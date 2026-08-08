@@ -158,6 +158,10 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           <button class="secundario" id="ag-next">Siguiente →</button>
         </div>
       ` : ""}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label for="cal-zona-vista" style="margin:0;font-size:12px;">Sombreado de noche en la hora de:</label>
+        <select id="cal-zona-vista" style="flex:1;"></select>
+      </div>
       <div class="cal-body">
         <div class="cal-col-horas" id="cal-col-horas"></div>
         <div class="cal-scroll scroll-fade-x">
@@ -186,6 +190,18 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   let lugarSeleccionado = null;
   let scrollInicialHecho = false;
   let diaAgendaActual = null;
+  // Zona horaria fija en la que se dibuja el sombreado de noche, elegida a
+  // mano por la persona usuaria — null significa "hora local de la ciudad
+  // de cada día" (default). Cada columna sigue siendo un día real en la
+  // ciudad que le corresponde (eso no cambia); lo único que cambia es en
+  // qué reloj se expresa el amanecer/atardecer de esa ciudad, para poder
+  // comparar de un vistazo varios días sin tener que hacer la conversión
+  // mental columna por columna. Deliberadamente NO afecta la posición de
+  // los bloques (lugares/traslados/hospedajes) ni el clic para agendar —
+  // esos siguen usando la hora real de cada ciudad, para no arriesgar que
+  // arrastrar un bloque lo guarde en una hora distinta a la que se ve.
+  const claveZonaVista = `planeador_zonaVistaNoche::${tripId}`;
+  let zonaVistaNoche = localStorage.getItem(claveZonaVista) || null;
   // Ciudad del día que se está viendo en Agenda — se recalcula en cada
   // render() y renderPendientes() la usa para no mezclar lugares de otras
   // ciudades del viaje en la lista de "sin agendar" de ese día.
@@ -240,12 +256,38 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     else diaAgendaActual = hoy;
   }
 
+  // Opciones del selector "Sombreado de noche en la hora de": la zona de
+  // origen del viaje + cada ciudad ya capturada, agrupadas por zonaHoraria
+  // (si dos ciudades comparten zona, basta una opción). Se reconstruye en
+  // cada render porque la lista de ciudades puede cambiar.
+  function renderZonaVistaSelector() {
+    const select = document.getElementById("cal-zona-vista");
+    if (!select) return;
+    const vistas = new Map(); // zonaHoraria -> etiqueta
+    if (estado.info.ciudadOrigen && estado.info.zonaOrigen) {
+      vistas.set(estado.info.zonaOrigen, `${estado.info.ciudadOrigen} (origen)`);
+    }
+    Object.values(estado.ciudades).forEach(c => {
+      if (!vistas.has(c.zonaHoraria)) vistas.set(c.zonaHoraria, c.nombre);
+    });
+    select.innerHTML = `<option value="">Hora local de cada día</option>` +
+      Array.from(vistas.entries()).map(([zona, etiqueta]) => `<option value="${esc(zona)}">${esc(etiqueta)}</option>`).join("");
+    // Si la zona guardada ya no corresponde a ninguna ciudad del viaje (se
+    // borró esa ciudad), se cae de vuelta a "hora local de cada día".
+    if (zonaVistaNoche && !vistas.has(zonaVistaNoche)) {
+      zonaVistaNoche = null;
+      localStorage.removeItem(claveZonaVista);
+    }
+    select.value = zonaVistaNoche || "";
+  }
+
   function render() {
     const grid = document.getElementById("cal-grid");
     const colHorasEl = document.getElementById("cal-col-horas");
     const pendientesEl = document.getElementById("cal-pendientes");
     if (!grid || !colHorasEl || !pendientesEl) return;
 
+    renderZonaVistaSelector();
     asegurarDiaAgendaPorDefecto();
 
     const dias = modoAgenda ? (diaAgendaActual ? [diaAgendaActual] : []) : listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
@@ -294,7 +336,10 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       `;
       const area = col.querySelector(".cal-area");
       const ciudadDelDia = infoDia.ciudadId ? estado.ciudades[infoDia.ciudadId] : null;
-      area.style.backgroundImage = fondoConNoche(calcularFranjaNoche(dia, ciudadDelDia, infoDia.zonaHoraria));
+      // El amanecer/atardecer real sigue siendo el de la ciudad del día
+      // (ciudadDelDia, por sus coordenadas) — zonaVistaNoche solo cambia en
+      // qué reloj se expresan esas horas para dibujar la franja.
+      area.style.backgroundImage = fondoConNoche(calcularFranjaNoche(dia, ciudadDelDia, zonaVistaNoche || infoDia.zonaHoraria));
 
       area.addEventListener("click", async e => {
         if (e.target !== area) return;
@@ -613,6 +658,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       el.appendChild(nota);
     }
   }
+
+  document.getElementById("cal-zona-vista").addEventListener("change", e => {
+    zonaVistaNoche = e.target.value || null;
+    if (zonaVistaNoche) localStorage.setItem(claveZonaVista, zonaVistaNoche);
+    else localStorage.removeItem(claveZonaVista);
+    solicitarRender();
+  });
 
   if (modoAgenda) {
     document.getElementById("ag-prev").addEventListener("click", () => {

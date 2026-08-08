@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=42"></script>
+<script src="js/tema.js?v=43"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=42">
+<link rel="stylesheet" href="css/estilos.css?v=43">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,14 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v43 — Selector de zona horaria para el sombreado de noche</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li>Nuevo selector "Sombreado de noche en la hora de" arriba de Calendario/Agenda: por default cada día se sombrea en la hora local de su propia ciudad, pero ahora puedes fijarlo a la zona de origen del viaje o a la de cualquier ciudad capturada, para comparar de un vistazo varios días sin hacer la conversión mental columna por columna. Se recuerda por viaje. Solo cambia el sombreado — la posición de traslados/hospedajes/lugares y el clic para agendar siguen usando siempre la hora real de cada ciudad.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v42 — Corrección al fix de traslados de v41: no más traslados "fantasma"</h3>
@@ -408,7 +416,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=42"></script>
-  <script src="js/version.js?v=42"></script>
+  <script src="js/app-version.js?v=43"></script>
+  <script src="js/version.js?v=43"></script>
 </body>
 </html>

@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=40"></script>
+<script src="js/tema.js?v=41"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=40">
+<link rel="stylesheet" href="css/estilos.css?v=41">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,14 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v41 — Traslados de más de un día ya no desaparecen en Calendario/Ruta</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li><strong>Corregido:</strong> un traslado que cruza medianoche (p.ej. un vuelo internacional largo que sale un día y llega al siguiente) solo se dibujaba en el día de salida, recortado a la medianoche — el resto del trayecto no aparecía en ningún lado. Ahora se pinta un bloque en cada día que toca: el de salida (hasta las 24:00) y el de llegada (desde las 00:00), tanto en Calendario/Agenda como en la Ruta.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v40 — Ícono de calendario propio (arreglo real en iPhone) y fecha por default del viaje</h3>
@@ -392,7 +400,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=40"></script>
-  <script src="js/version.js?v=40"></script>
+  <script src="js/app-version.js?v=41"></script>
+  <script src="js/version.js?v=41"></script>
 </body>
 </html>

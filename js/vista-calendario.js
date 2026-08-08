@@ -313,27 +313,33 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         .filter(([, b]) => fechaISO(b.inicioUTC, infoDia.zonaHoraria) === dia)
         .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria, ciudadPorDia));
 
-      // Traslados fijos que caen ese día (según hora de origen); usan su duración real
-      // (fin de trayecto) si ya se capturó, o 1h como referencia si es un traslado viejo.
+      // Traslados que tocan este día en la zona LOCAL de la columna (no la
+      // fecha UTC cruda) — un traslado largo (vuelo internacional de +10h,
+      // por ejemplo) puede tocar dos días; se dibuja un segmento recortado
+      // en cada uno (ver pintarBloqueFijo). Usa su duración real (fin de
+      // trayecto) si ya se capturó, o 1h como referencia si es un traslado viejo.
       Object.entries(estado.traslados)
-        .filter(([, t]) => t.inicioUTC.slice(0, 10) === dia)
+        .filter(([, t]) => {
+          const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
+          return fechaISO(t.inicioUTC, infoDia.zonaHoraria) <= dia && dia <= fechaISO(fin, infoDia.zonaHoraria);
+        })
         .forEach(([id, t]) => {
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
           const duracion = t.finUTC ? ` (${formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC))})` : "";
           const viaEscalas = (t.escalas || []).map(e => ` → ${e}`).join("");
-          pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado");
+          pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado", dia);
         });
 
       // Hospedajes: un bloque el día de check-in y otro el día de check-out.
       Object.entries(estado.hospedajes)
-        .filter(([, h]) => h.checkinUTC && h.checkinUTC.slice(0, 10) === dia)
+        .filter(([, h]) => h.checkinUTC && fechaISO(h.checkinUTC, infoDia.zonaHoraria) === dia)
         .forEach(([id, h]) => {
           const noches = h.noches ? ` (${h.noches} noche${h.noches > 1 ? "s" : ""})` : "";
-          pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje");
+          pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia);
         });
       Object.entries(estado.hospedajes)
-        .filter(([, h]) => h.checkoutUTC && h.checkoutUTC.slice(0, 10) === dia)
-        .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje"));
+        .filter(([, h]) => h.checkoutUTC && fechaISO(h.checkoutUTC, infoDia.zonaHoraria) === dia)
+        .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia));
 
       grid.appendChild(col);
     });
@@ -353,11 +359,19 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     }
   }
 
-  function pintarBloqueFijo(area, iconoTipo, texto, inicioUTC, finUTC, zonaHoraria, colorVar) {
-    const inicio = horaLocalDecimal(inicioUTC, zonaHoraria);
-    let fin = horaLocalDecimal(finUTC, zonaHoraria);
-    // Traslado nocturno o de varios días: recorta el bloque al final del día visible
-    // en vez de "envolverlo" incorrectamente al inicio del mismo día.
+  // dia: fecha local (AAAA-MM-DD, en zonaHoraria) de la columna donde se está
+  // pintando este bloque — necesaria para recortarlo correctamente cuando
+  // inicioUTC/finUTC no caen ambos ese mismo día (traslados largos, p.ej. un
+  // vuelo internacional de +10h: sale un día y llega al siguiente). Si el
+  // bloque empezó un día anterior a `dia`, se recorta a partir de 00:00; si
+  // termina un día después, se recorta hasta 24:00 — así el traslado se ve
+  // completo repartido en tantas columnas como días toque, en vez de
+  // desaparecer después del primer día o "envolverse" mal a las 00:00.
+  function pintarBloqueFijo(area, iconoTipo, texto, inicioUTC, finUTC, zonaHoraria, colorVar, dia) {
+    const diaInicio = fechaISO(inicioUTC, zonaHoraria);
+    const diaFin = fechaISO(finUTC, zonaHoraria);
+    const inicio = diaInicio === dia ? horaLocalDecimal(inicioUTC, zonaHoraria) : 0;
+    let fin = diaFin === dia ? horaLocalDecimal(finUTC, zonaHoraria) : 24;
     if (fin <= inicio) fin = 24;
     const div = document.createElement("div");
     div.className = "cal-bloque fijado";
@@ -365,7 +379,9 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorCss(colorVar);
     const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
-    const horaOrigenTxt = zonaOrigen !== zonaHoraria
+    // La hora de origen solo tiene sentido en el día real de salida — en los
+    // días siguientes (si el traslado sigue en curso) confundiría más que ayudar.
+    const horaOrigenTxt = (zonaOrigen !== zonaHoraria && diaInicio === dia)
       ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(inicioUTC, zonaHoraria)} local · ${formatoHora(inicioUTC, zonaOrigen)} origen</div>`
       : "";
     div.innerHTML = `<div class="titulo">${icono("lock", 12)}${icono(iconoTipo, 12)} ${esc(texto)}</div>${horaOrigenTxt}`;

@@ -222,7 +222,10 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         </div>
       </div>
       <div class="tarjeta" style="margin-top:12px;">
-        <h3 style="margin-bottom:4px;">Lugares sin agendar</h3>
+        <div class="encabezado-seccion" style="margin-bottom:4px;">
+          <h3 style="margin:0;">Lugares sin agendar</h3>
+          <button type="button" class="btn-agregar-circular" id="cal-btn-agregar-lugar" aria-label="Agregar lugar" title="Agregar lugar">${icono("plus", 20)}</button>
+        </div>
         <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 6px;">
           Toca un lugar y luego toca la hora del día donde quieras colocarlo.
         </p>
@@ -676,6 +679,70 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     renderVista(lugarInicial);
   }
 
+  // Alta rápida de un lugar desde "Lugares sin agendar" (Calendario/Agenda),
+  // sin tener que ir hasta la pestaña Lugares — mismos campos que
+  // abrirFormularioLugar en vista-lugares.js. En Agenda (un solo día
+  // visible), la ciudad se preselecciona con la del día que se está viendo
+  // (ciudadesDelDiaAgenda[0] — la primera si es un día partido entre dos
+  // ciudades) para que el lugar recién creado aparezca de inmediato en la
+  // lista de pendientes de ESE día, en vez de quedar oculto por no
+  // coincidir con ninguna ciudad visible ahí (ver renderPendientes).
+  function abrirNuevoLugar() {
+    const idsCiudades = Object.keys(estado.ciudades);
+    if (idsCiudades.length === 0) {
+      alert("Primero agrega al menos una ciudad en la pestaña Ciudades.");
+      return;
+    }
+    const ciudadPorDefecto = modoAgenda && ciudadesDelDiaAgenda[0] ? ciudadesDelDiaAgenda[0] : idsCiudades[0];
+    const { modal, cerrar } = abrirModal(`
+      <h3>Agregar lugar</h3>
+      <form id="cal-form-nuevo-lugar">
+        <label for="cnl-nombre">Nombre</label>
+        <input id="cnl-nombre" type="text" placeholder="Ej. Empire State" required autofocus>
+        <label for="cnl-ciudad">Ciudad</label>
+        <select id="cnl-ciudad" required>
+          ${idsCiudades.map(id => `<option value="${esc(id)}" ${ciudadPorDefecto === id ? "selected" : ""}>${esc(estado.ciudades[id].nombre)}</option>`).join("")}
+        </select>
+        <label for="cnl-categoria">Prioridad</label>
+        <select id="cnl-categoria" required>
+          <option value="deseable">Deseable</option>
+          <option value="importante">Importante</option>
+          <option value="no_negociable">No negociable</option>
+        </select>
+        <label for="cnl-mapa">Liga de mapa</label>
+        <input id="cnl-mapa" type="url" placeholder="https://maps.google.com/… (opcional)">
+        <label for="cnl-liga">Liga de interés adicional</label>
+        <input id="cnl-liga" type="url" placeholder="https://… (opcional)">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <input id="cnl-aire-libre" type="checkbox">
+          ${icono("snowflake", 15)} Actividad al aire libre (requiere ropa de intemperie)
+        </label>
+        <label for="cnl-notas">Notas</label>
+        <textarea id="cnl-notas" placeholder="Opcional"></textarea>
+        ${camposCosto("cnl", null, "porPersona", monedasActivasDe(estado.monedas))}
+        <div class="fila-botones">
+          <button type="submit">Agregar</button>
+          <button type="button" class="secundario" id="cnl-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#cnl-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#cal-form-nuevo-lugar").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nombre = modal.querySelector("#cnl-nombre").value.trim();
+      const ciudadId = modal.querySelector("#cnl-ciudad").value;
+      if (!nombre || !ciudadId) return;
+      const categoria = modal.querySelector("#cnl-categoria").value;
+      const liga_mapa = modal.querySelector("#cnl-mapa").value.trim();
+      const ligaExtra = modal.querySelector("#cnl-liga").value.trim();
+      const aireLibre = modal.querySelector("#cnl-aire-libre").checked;
+      const notas = modal.querySelector("#cnl-notas").value.trim();
+      const { costo, costoTipo, moneda } = leerCamposCosto(modal, "cnl");
+      await agregar(refLugares, { nombre, ciudadId, categoria, liga_mapa, ligas: ligaExtra ? [ligaExtra] : [], aireLibre, notas, costo, costoTipo, moneda });
+      cerrar();
+    });
+  }
+
   // zonaHoraria: zona de posición de esta columna (zonaPosicion — la MISMA
   // para todos los bloques de la columna, ver calcularPosicionBloque). dia:
   // día de la columna.
@@ -1004,6 +1071,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     aplicarZoomCalendario();
   });
   actualizarBotonesZoom();
+
+  document.getElementById("cal-btn-agregar-lugar").addEventListener("click", abrirNuevoLugar);
 
   if (modoAgenda) {
     document.getElementById("ag-prev").addEventListener("click", () => {

@@ -239,8 +239,9 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   const refTraslados = refNodo(tripId, "traslados");
   const refHospedajes = refNodo(tripId, "hospedajes");
   const refCiudadPorDia = refNodo(tripId, "ciudadPorDia");
+  const refMonedas = refNodo(tripId, "monedas");
 
-  const estado = { info: {}, ciudades: {}, lugares: {}, itinerario: {}, traslados: {}, hospedajes: {}, ciudadPorDiaManual: {} };
+  const estado = { info: {}, ciudades: {}, lugares: {}, itinerario: {}, traslados: {}, hospedajes: {}, ciudadPorDiaManual: {}, monedas: {} };
   let lugarSeleccionado = null;
   let scrollInicialHecho = false;
   let diaAgendaActual = null;
@@ -574,40 +575,105 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     area.appendChild(div);
   }
 
-  // Modal de solo lectura con la info del lugar (nombre, categoría, ciudad,
-  // horario agendado, notas, costo, ligas de mapa/sitio web) — se abre al
-  // tocar el bloque en Calendario/Agenda sin arrastrarlo, para no tener que
-  // ir hasta la pestaña Lugares a consultarlo. ETIQUETA_CATEGORIA_LUGAR
-  // viene de vista-lugares.js (mismo scope global de script, ya cargado).
-  function mostrarInfoLugar(lugar, bloque, zonaHoraria) {
-    const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
-    const etiquetaZona = zonaVistaNoche ? "vista" : "local";
-    const ciudad = estado.ciudades[lugar.ciudadId];
-    const ligaWeb = (lugar.ligas || [])[0];
-    const horaOrigenTxt = zonaOrigen !== zonaHoraria
-      ? `<p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} hora de origen</p>`
-      : "";
-    const { modal, cerrar } = abrirModal(`
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <h3 style="margin:0;">${lugar.aireLibre ? icono("snowflake", 15) + " " : ""}${esc(lugar.nombre)}</h3>
-        <span class="chip ${esc(lugar.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[lugar.categoria] || lugar.categoria)}</span>
-      </div>
-      <p style="font-size:13px;color:var(--color-texto-suave);margin:4px 0 8px;">
-        ${esc(ciudad ? ciudad.nombre : "")} · ${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}
-      </p>
-      ${horaOrigenTxt}
-      ${lugar.costo != null ? `<p style="font-size:13px;">${esc(formatoCosto(lugar.costo, lugar.costoTipo, lugar.moneda))}</p>` : ""}
-      ${lugar.notas ? `<p style="font-size:13px;white-space:pre-wrap;">${esc(lugar.notas)}</p>` : ""}
-      ${(lugar.liga_mapa || ligaWeb) ? `
-      <div class="fila-botones">
-        ${lugar.liga_mapa ? `<a href="${esc(lugar.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("map", "Mapa", 14)}</button></a>` : ""}
-        ${ligaWeb ? `<a href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("link", "Sitio web", 14)}</button></a>` : ""}
-      </div>` : ""}
-      <div class="fila-botones">
-        <button type="button" class="secundario" id="il-cerrar">Cerrar</button>
-      </div>
-    `);
-    modal.querySelector("#il-cerrar").addEventListener("click", cerrar);
+  // Modal con la info del lugar (nombre, categoría, ciudad, horario
+  // agendado, notas, costo, ligas de mapa/sitio web) — se abre al tocar el
+  // bloque en Calendario/Agenda sin arrastrarlo, para no tener que ir hasta
+  // la pestaña Lugares a consultarlo. Un botón "Editar" cambia el MISMO
+  // modal a un formulario (sin cerrar/reabrir); al guardar (o cancelar)
+  // vuelve a mostrar esta vista de solo lectura, ya actualizada.
+  // ETIQUETA_CATEGORIA_LUGAR viene de vista-lugares.js (mismo scope global
+  // de script, ya cargado).
+  function mostrarInfoLugar(lugarInicial, bloque, zonaHoraria) {
+    const { modal, cerrar } = abrirModal("");
+
+    function renderVista(lugar) {
+      const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
+      const etiquetaZona = zonaVistaNoche ? "vista" : "local";
+      const ciudad = estado.ciudades[lugar.ciudadId];
+      const ligaWeb = (lugar.ligas || [])[0];
+      const horaOrigenTxt = zonaOrigen !== zonaHoraria
+        ? `<p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} hora de origen</p>`
+        : "";
+      modal.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <h3 style="margin:0;">${lugar.aireLibre ? icono("snowflake", 15) + " " : ""}${esc(lugar.nombre)}</h3>
+          <span class="chip ${esc(lugar.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[lugar.categoria] || lugar.categoria)}</span>
+        </div>
+        <p style="font-size:13px;color:var(--color-texto-suave);margin:4px 0 8px;">
+          ${esc(ciudad ? ciudad.nombre : "")} · ${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}
+        </p>
+        ${horaOrigenTxt}
+        ${lugar.costo != null ? `<p style="font-size:13px;">${esc(formatoCosto(lugar.costo, lugar.costoTipo, lugar.moneda))}</p>` : ""}
+        ${lugar.notas ? `<p style="font-size:13px;white-space:pre-wrap;">${esc(lugar.notas)}</p>` : ""}
+        ${(lugar.liga_mapa || ligaWeb) ? `
+        <div class="fila-botones">
+          ${lugar.liga_mapa ? `<a href="${esc(lugar.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("map", "Mapa", 14)}</button></a>` : ""}
+          ${ligaWeb ? `<a href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("link", "Sitio web", 14)}</button></a>` : ""}
+        </div>` : ""}
+        <div class="fila-botones">
+          <button type="button" id="il-editar">Editar</button>
+          <button type="button" class="secundario" id="il-cerrar">Cerrar</button>
+        </div>
+      `;
+      modal.querySelector("#il-editar").addEventListener("click", () => renderEdicion(lugar));
+      modal.querySelector("#il-cerrar").addEventListener("click", cerrar);
+    }
+
+    function renderEdicion(lugar) {
+      const idsCiudades = Object.keys(estado.ciudades);
+      modal.innerHTML = `
+        <h3>Editar lugar</h3>
+        <form id="il-form">
+          <label for="il-nombre">Nombre</label>
+          <input id="il-nombre" type="text" required autofocus value="${esc(lugar.nombre)}">
+          <label for="il-ciudad">Ciudad</label>
+          <select id="il-ciudad" required>
+            ${idsCiudades.map(id => `<option value="${esc(id)}" ${lugar.ciudadId === id ? "selected" : ""}>${esc(estado.ciudades[id].nombre)}</option>`).join("")}
+          </select>
+          <label for="il-categoria">Prioridad</label>
+          <select id="il-categoria" required>
+            <option value="deseable" ${lugar.categoria === "deseable" ? "selected" : ""}>Deseable</option>
+            <option value="importante" ${lugar.categoria === "importante" ? "selected" : ""}>Importante</option>
+            <option value="no_negociable" ${lugar.categoria === "no_negociable" ? "selected" : ""}>No negociable</option>
+          </select>
+          <label for="il-mapa">Liga de mapa</label>
+          <input id="il-mapa" type="url" placeholder="https://maps.google.com/… (opcional)" value="${esc(lugar.liga_mapa || "")}">
+          <label for="il-liga">Liga de interés adicional</label>
+          <input id="il-liga" type="url" placeholder="https://… (opcional)" value="${esc((lugar.ligas || [])[0] || "")}">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+            <input id="il-aire-libre" type="checkbox" ${lugar.aireLibre ? "checked" : ""}>
+            ${icono("snowflake", 15)} Actividad al aire libre (requiere ropa de intemperie)
+          </label>
+          <label for="il-notas">Notas</label>
+          <textarea id="il-notas" placeholder="Opcional">${esc(lugar.notas || "")}</textarea>
+          ${camposCosto("il", lugar, "porPersona", monedasActivasDe(estado.monedas))}
+          <div class="fila-botones">
+            <button type="submit">Guardar cambios</button>
+            <button type="button" class="secundario" id="il-cancelar-edicion">Cancelar</button>
+          </div>
+        </form>
+      `;
+      modal.querySelector("#il-cancelar-edicion").addEventListener("click", () => renderVista(lugar));
+      modal.querySelector("#il-form").addEventListener("submit", async e => {
+        e.preventDefault();
+        const nombre = modal.querySelector("#il-nombre").value.trim();
+        const ciudadId = modal.querySelector("#il-ciudad").value;
+        if (!nombre || !ciudadId) return;
+        const categoria = modal.querySelector("#il-categoria").value;
+        const liga_mapa = modal.querySelector("#il-mapa").value.trim();
+        const ligaExtra = modal.querySelector("#il-liga").value.trim();
+        const aireLibre = modal.querySelector("#il-aire-libre").checked;
+        const notas = modal.querySelector("#il-notas").value.trim();
+        const { costo, costoTipo, moneda } = leerCamposCosto(modal, "il");
+        const datos = { nombre, ciudadId, categoria, liga_mapa, ligas: ligaExtra ? [ligaExtra] : [], aireLibre, notas, costo, costoTipo, moneda };
+        await actualizar(refLugares.child(bloque.refId), datos);
+        // Vuelve a la vista de solo lectura ya con los datos nuevos, sin
+        // esperar a que el listener de Firebase confirme el viaje redondo.
+        renderVista({ ...lugar, ...datos });
+      });
+    }
+
+    renderVista(lugarInicial);
   }
 
   // zonaHoraria: zona de posición de esta columna (zonaPosicion — la MISMA
@@ -641,10 +707,26 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     const accionWeb = ligaWeb
       ? `<a class="accion-liga" data-accion="web" href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer" title="Sitio web" onclick="event.stopPropagation()">${icono("link", 13)}</a>`
       : "";
+    // Insignia de prioridad (esquina superior izquierda): "‼" no negociable,
+    // "!" importante — nada para deseable, que es la prioridad base y no
+    // necesita destacarse. Puramente informativa (pointer-events:none en
+    // CSS), no compite con el tap-para-info ni con el arrastre.
+    const INSIGNIA_PRIORIDAD = { no_negociable: "‼", importante: "!" };
+    const badgePrioridad = INSIGNIA_PRIORIDAD[lugar.categoria]
+      ? `<span class="badge-prioridad" title="${esc(ETIQUETA_CATEGORIA_LUGAR[lugar.categoria] || lugar.categoria)}">${INSIGNIA_PRIORIDAD[lugar.categoria]}</span>`
+      : "";
+    // Insignia de aire libre (esquina inferior izquierda) — antes vivía
+    // pegada al nombre en el título; separada para que el título quede solo
+    // con el nombre y las ligas.
+    const badgeAireLibre = lugar.aireLibre
+      ? `<span class="badge-aire" title="Actividad al aire libre (requiere ropa de intemperie)">${icono("snowflake", 12)}</span>`
+      : "";
     div.innerHTML = `
       <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? icono("lock", 13) : icono("pin", 13)}</span>
       <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">${icono("x", 13)}</span>
-      <div class="titulo">${lugar.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(lugar.nombre)}${accionMapa}${accionWeb}</div>
+      ${badgePrioridad}
+      ${badgeAireLibre}
+      <div class="titulo">${esc(lugar.nombre)}${accionMapa}${accionWeb}</div>
       <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}</div>
       ${horaOrigenTxt}
       ${bloque.fijado ? "" : '<div class="resize"></div>'}
@@ -968,10 +1050,14 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   const cancelarTraslados = escuchar(refTraslados, v => { estado.traslados = v; solicitarRender(); });
   const cancelarHospedajes = escuchar(refHospedajes, v => { estado.hospedajes = v; solicitarRender(); });
   const cancelarCiudadPorDia = escuchar(refCiudadPorDia, v => { estado.ciudadPorDiaManual = v; solicitarRender(); });
+  // Sin solicitarRender(): las monedas solo hacen falta para el selector del
+  // formulario de edición de lugar (ver abrirEdicionLugar), que se abre
+  // bajo demanda — no vale la pena repintar toda la cuadrícula cuando cambian.
+  const cancelarMonedas = escuchar(refMonedas, v => { estado.monedas = v; });
 
   return () => {
     cancelarInfo(); cancelarCiudades(); cancelarLugares();
-    cancelarItinerario(); cancelarTraslados(); cancelarHospedajes(); cancelarCiudadPorDia();
+    cancelarItinerario(); cancelarTraslados(); cancelarHospedajes(); cancelarCiudadPorDia(); cancelarMonedas();
   };
 }
 

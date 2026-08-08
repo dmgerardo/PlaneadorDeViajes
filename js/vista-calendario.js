@@ -104,40 +104,74 @@ function fondoConNoche(franja) {
   return `${lineas}, ${sombra}`;
 }
 
-// Determina, para cada día, la ciudad en la que se está. Prioriza la
-// asignación explícita del timeline (ciudadPorDia); si un día no tiene
-// ciudad asignada ahí, recurre a la heurística previa basada en traslados
-// (para no romper viajes que aún no usan el timeline).
+// Determina, para cada día, la(s) ciudad(es) en la(s) que se está. Un día
+// con un traslado capturado (Logística) que lo toque (el de salida, en hora
+// del origen, o el de llegada, en hora del destino) se trata SIEMPRE como
+// día partido entre dos ciudades — misma prioridad y mismo criterio que
+// vista-ruta.js (trasladoDelDia), para que Calendario/Agenda muestren
+// exactamente lo mismo que Ruta. Solo si el día no tiene traslado se usa la
+// asignación explícita del timeline (ciudadPorDia); si tampoco la tiene,
+// recurre a la heurística previa (seguir la ciudad de destino del último
+// traslado visto), para no romper viajes que aún no usan el timeline.
+// Cada entrada trae `ciudadIds`: todas las ciudades válidas para agendar un
+// lugar ese día (una sola normalmente; dos en un día partido) — [] significa
+// "sin restricción" (día sin ciudad conocida todavía).
 function calcularCiudadPorDia(dias, ciudadPorDiaManual, ciudades, traslados, zonaOrigen) {
-  const ordenados = Object.values(traslados).slice().sort((a, b) => a.inicioUTC.localeCompare(b.inicioUTC));
-  const listaCiudades = Object.values(ciudades);
+  const idPorNombre = nombre => {
+    const entrada = Object.entries(ciudades).find(([, c]) => c.nombre.toLowerCase() === (nombre || "").toLowerCase());
+    return entrada ? entrada[0] : null;
+  };
   const buscarTZ = nombre => {
-    const c = listaCiudades.find(c => c.nombre.toLowerCase() === (nombre || "").toLowerCase());
-    return c ? c.zonaHoraria : zonaOrigen;
+    const id = idPorNombre(nombre);
+    return id ? ciudades[id].zonaHoraria : zonaOrigen;
   };
 
-  let ciudadActual = null;
-  let tzActual = zonaOrigen;
-  const heuristico = {};
-  let idxTraslado = 0;
+  // Traslado (si lo hay) que toca cada día — igual que trasladoDelDia en
+  // vista-ruta.js, pero precalculado para los `dias` de esta vista.
+  const trasladoPorDia = {};
+  Object.values(traslados).forEach(t => {
+    if (!t.inicioUTC) return;
+    const fin = t.finUTC || t.inicioUTC;
+    const diaSalida = fechaISO(t.inicioUTC, buscarTZ(t.origen));
+    const diaLlegada = fechaISO(fin, buscarTZ(t.destino));
+    if (!trasladoPorDia[diaSalida]) trasladoPorDia[diaSalida] = t;
+    if (!trasladoPorDia[diaLlegada]) trasladoPorDia[diaLlegada] = t;
+  });
 
+  // Heurística previa (sin Ruta ni traslados capturados): sigue la ciudad de
+  // destino del último traslado visto, en orden cronológico — último
+  // recurso si el día no tiene ni traslado ni asignación manual.
+  const ordenados = Object.values(traslados).slice().sort((a, b) => a.inicioUTC.localeCompare(b.inicioUTC));
+  let ciudadActual = null, tzActual = zonaOrigen, idxTraslado = 0;
+  const heuristico = {};
   dias.forEach(dia => {
-    let cambioHoy = null;
     while (idxTraslado < ordenados.length && ordenados[idxTraslado].inicioUTC.slice(0, 10) === dia) {
       const t = ordenados[idxTraslado];
-      cambioHoy = { origen: t.origen, destino: t.destino };
       ciudadActual = t.destino;
       tzActual = buscarTZ(t.destino);
       idxTraslado++;
     }
-    heuristico[dia] = { etiqueta: cambioHoy ? `${cambioHoy.origen} → ${cambioHoy.destino}` : (ciudadActual || "—"), zonaHoraria: tzActual, ciudadId: null };
+    const id = idPorNombre(ciudadActual);
+    heuristico[dia] = { etiqueta: ciudadActual || "—", zonaHoraria: tzActual, ciudadId: id, ciudadIds: id ? [id] : [] };
   });
 
   const resultado = {};
   dias.forEach(dia => {
+    const traslado = trasladoPorDia[dia];
+    if (traslado) {
+      const origenId = idPorNombre(traslado.origen);
+      const destinoId = idPorNombre(traslado.destino);
+      resultado[dia] = {
+        etiqueta: `${traslado.origen} → ${traslado.destino}`,
+        zonaHoraria: buscarTZ(traslado.destino),
+        ciudadId: destinoId || origenId || null,
+        ciudadIds: [origenId, destinoId].filter(Boolean)
+      };
+      return;
+    }
     const ciudadId = ciudadPorDiaManual[dia];
     if (ciudadId && ciudades[ciudadId]) {
-      resultado[dia] = { etiqueta: ciudades[ciudadId].nombre, zonaHoraria: ciudades[ciudadId].zonaHoraria, ciudadId };
+      resultado[dia] = { etiqueta: ciudades[ciudadId].nombre, zonaHoraria: ciudades[ciudadId].zonaHoraria, ciudadId, ciudadIds: [ciudadId] };
     } else {
       resultado[dia] = heuristico[dia];
     }
@@ -205,10 +239,17 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   // v41/v42 pero en el eje de arrastre en vez del de "a qué día pertenece".
   const claveZonaVista = `planeador_zonaVistaNoche::${tripId}`;
   let zonaVistaNoche = localStorage.getItem(claveZonaVista) || null;
-  // Ciudad del día que se está viendo en Agenda — se recalcula en cada
-  // render() y renderPendientes() la usa para no mezclar lugares de otras
-  // ciudades del viaje en la lista de "sin agendar" de ese día.
-  let ciudadDelDiaAgenda = null;
+  // Ciudad(es) del día que se está viendo en Agenda — normalmente una sola,
+  // dos en un día partido (traslado capturado ese día, ver
+  // calcularCiudadPorDia). Se recalcula en cada render() y renderPendientes()
+  // la usa para no mezclar lugares de otras ciudades del viaje en la lista
+  // de "sin agendar" de ese día.
+  let ciudadesDelDiaAgenda = [];
+  // Unión de todas las ciudades con al menos un día asignado en el viaje
+  // (manual o por un traslado capturado ese día) — se recalcula en cada
+  // render() y renderPendientes() la usa en modo Calendario (no Agenda) para
+  // decidir qué lugares pendientes ya se pueden agendar en algún día visible.
+  let ciudadesConDiaCalendario = new Set();
 
   function colorParaCiudad(ciudadId) {
     const ids = Object.keys(estado.ciudades);
@@ -295,7 +336,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
     const dias = modoAgenda ? (diaAgendaActual ? [diaAgendaActual] : []) : listaDeDias(estado.info.fechaInicio, estado.info.fechaFin);
     const ciudadPorDia = calcularCiudadPorDia(dias, estado.ciudadPorDiaManual, estado.ciudades, estado.traslados, estado.info.zonaOrigen || "America/Mexico_City");
-    ciudadDelDiaAgenda = (modoAgenda && diaAgendaActual && ciudadPorDia[diaAgendaActual]) ? ciudadPorDia[diaAgendaActual].ciudadId : null;
+    ciudadesDelDiaAgenda = (modoAgenda && diaAgendaActual && ciudadPorDia[diaAgendaActual]) ? ciudadPorDia[diaAgendaActual].ciudadIds : [];
+    ciudadesConDiaCalendario = new Set(Object.values(ciudadPorDia).flatMap(info => info.ciudadIds || []));
 
     if (modoAgenda) {
       const encabezado = document.getElementById("ag-fecha-actual");
@@ -353,7 +395,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         if (!lugarSeleccionado) return;
         const lugar = estado.lugares[lugarSeleccionado];
         if (!lugar) return;
-        if (infoDia.ciudadId && infoDia.ciudadId !== lugar.ciudadId) {
+        if (infoDia.ciudadIds && infoDia.ciudadIds.length && !infoDia.ciudadIds.includes(lugar.ciudadId)) {
           const nombreCiudadLugar = estado.ciudades[lugar.ciudadId] ? estado.ciudades[lugar.ciudadId].nombre : "otra ciudad";
           alert(`Este día está asignado a "${infoDia.etiqueta}", pero "${lugar.nombre}" es de ${nombreCiudadLugar}. Asigna primero ese día a la ciudad correcta en la pestaña Ciudades.`);
           return;
@@ -575,7 +617,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       if (nuevaArea && nuevaArea !== areaActual && lugar) {
         const diaCandidato = nuevaArea.dataset.dia;
         const infoCandidato = ciudadPorDia[diaCandidato];
-        const puedeMover = !infoCandidato || !infoCandidato.ciudadId || infoCandidato.ciudadId === lugar.ciudadId;
+        const puedeMover = !infoCandidato || !infoCandidato.ciudadIds || !infoCandidato.ciudadIds.length || infoCandidato.ciudadIds.includes(lugar.ciudadId);
         if (puedeMover) {
           areaActual = nuevaArea;
           zonaActual = nuevaArea.dataset.tz;
@@ -651,10 +693,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
     let listos, mensajeVacio, ctaRuta = false;
     if (modoAgenda) {
-      // En Agenda solo tiene sentido ofrecer lugares de la ciudad de ESTE
-      // día — mostrar los de otras ciudades del viaje solo confunde.
-      listos = ciudadDelDiaAgenda ? todosPendientes.filter(([, l]) => l.ciudadId === ciudadDelDiaAgenda) : [];
-      if (ciudadDelDiaAgenda) {
+      // En Agenda solo tiene sentido ofrecer lugares de la(s) ciudad(es) de
+      // ESTE día (dos en un día partido) — mostrar los de otras ciudades del
+      // viaje solo confunde.
+      listos = ciudadesDelDiaAgenda.length ? todosPendientes.filter(([, l]) => ciudadesDelDiaAgenda.includes(l.ciudadId)) : [];
+      if (ciudadesDelDiaAgenda.length) {
         mensajeVacio = "Sin lugares pendientes de esta ciudad.";
       } else {
         mensajeVacio = "Asigna la ciudad de este día en la pestaña Ruta para ver lugares pendientes.";
@@ -662,9 +705,9 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       }
     } else {
       // En Calendario (todos los días) sí tiene sentido ofrecer lugares de
-      // cualquier ciudad que ya tenga al menos un día asignado.
-      const ciudadesConDia = new Set(Object.values(estado.ciudadPorDiaManual).filter(Boolean));
-      listos = todosPendientes.filter(([, l]) => ciudadesConDia.size === 0 || ciudadesConDia.has(l.ciudadId));
+      // cualquier ciudad que ya tenga al menos un día asignado (incluye
+      // ambas ciudades de un día partido).
+      listos = todosPendientes.filter(([, l]) => ciudadesConDiaCalendario.size === 0 || ciudadesConDiaCalendario.has(l.ciudadId));
       mensajeVacio = "Asigna ciudades a los días en la pestaña Ruta para poder agendar tus lugares.";
       ctaRuta = true;
     }

@@ -27,6 +27,7 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
 
   let infoCache = {};
   let participantesCache = {};
+  let esAdminActual = false;
   const progreso = { ciudades: {}, ciudadPorDia: {}, lugares: {} };
 
   // Checklist de prerrequisitos "Ciudades → Ruta → Lugares" — cada uno
@@ -66,7 +67,10 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     const el = document.getElementById("in-info");
     if (!el) return;
     el.innerHTML = `
-      <h2>${esc(info.nombre || "Viaje")}</h2>
+      <div class="encabezado-seccion">
+        <h2>${esc(info.nombre || "Viaje")}</h2>
+        ${esAdminActual ? `<button type="button" class="texto" id="in-btn-renombrar">Renombrar</button>` : ""}
+      </div>
       <label>Fecha inicio</label>
       <input id="in-fecha-inicio" type="date" value="${esc(info.fechaInicio || "")}">
       <label>Fecha fin</label>
@@ -80,7 +84,15 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
       <select id="in-zona-origen">${opcionesZonaHoraria(info.zonaOrigen || "America/Mexico_City")}</select>
       <label>Clave de invitación</label>
       <input type="text" value="${esc(info.claveInvitacion || "")}" readonly>
+      ${esAdminActual ? `
+      <div class="fila-botones">
+        <button type="button" class="peligro" id="in-btn-eliminar-viaje">Eliminar viaje</button>
+      </div>` : ""}
     `;
+    if (esAdminActual) {
+      document.getElementById("in-btn-renombrar").addEventListener("click", () => abrirModalRenombrarViaje(info.nombre || ""));
+      document.getElementById("in-btn-eliminar-viaje").addEventListener("click", () => abrirModalEliminarViaje(info.nombre || "este viaje"));
+    }
     document.getElementById("in-fecha-inicio").addEventListener("change", e => {
       const fechaInicio = e.target.value;
       const actualizacion = { fechaInicio };
@@ -134,6 +146,10 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     if (!el) return;
     limpiar(el);
     const yoSoyAdmin = participantes[sesion.userId] && participantes[sesion.userId].rol === "admin";
+    if (yoSoyAdmin !== esAdminActual) {
+      esAdminActual = yoSoyAdmin;
+      renderInfo(infoCache); // refresca los botones de admin (Renombrar/Eliminar) del encabezado
+    }
     Object.entries(participantes).forEach(([userId, p]) => {
       const fila = document.createElement("div");
       fila.className = "lista-item";
@@ -187,6 +203,77 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
       } catch (err) {
         modal.querySelector("#rc-error").textContent = err.message;
       }
+    });
+  }
+
+  function abrirModalRenombrarViaje(nombreActual) {
+    const { modal, cerrar } = abrirModal(`
+      <h3>Renombrar viaje</h3>
+      <form id="form-renombrar-viaje">
+        <label for="rv-nombre">Nombre del viaje</label>
+        <input id="rv-nombre" type="text" required autofocus value="${esc(nombreActual)}">
+        <div class="fila-botones">
+          <button type="submit">Guardar</button>
+          <button type="button" class="secundario" id="rv-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#rv-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-renombrar-viaje").addEventListener("submit", async e => {
+      e.preventDefault();
+      const nuevoNombre = modal.querySelector("#rv-nombre").value.trim();
+      if (!nuevoNombre) return;
+      await actualizar(refInfo, { nombre: nuevoNombre });
+      cerrar();
+    });
+  }
+
+  // Borra el viaje completo (todo su árbol en /viajes/{tripId}) y limpia la
+  // referencia en /usuarios/{userId}/viajesInvitado de cada participante —
+  // si no, a esas personas les quedaría un id de viaje "fantasma" en su
+  // lista al que ya no pueden entrar.
+  async function eliminarViajeCompleto() {
+    const actualizaciones = { [`viajes/${tripId}`]: null };
+    Object.keys(participantesCache || {}).forEach(userId => {
+      actualizaciones[`usuarios/${userId}/viajesInvitado/${tripId}`] = null;
+    });
+    await db.ref().update(actualizaciones);
+    mostrarToast("Eliminado");
+  }
+
+  // Requiere escribir el nombre exacto del viaje — a diferencia de un
+  // confirm() simple, esto es intencionalmente más estricto porque borra
+  // TODO el viaje (no solo una fila) y afecta a todos los participantes,
+  // no solo a quien lo borra.
+  function abrirModalEliminarViaje(nombreViaje) {
+    const { modal, cerrar } = abrirModal(`
+      <h3>Eliminar viaje</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">
+        Esto borra <strong>${esc(nombreViaje)}</strong> por completo: ciudades, ruta, lugares,
+        traslados, hospedajes y checklist. El viaje desaparece para todos los participantes.
+        No se puede deshacer.
+      </p>
+      <form id="form-eliminar-viaje">
+        <label for="ev-confirmar">Escribe "${esc(nombreViaje)}" para confirmar</label>
+        <input id="ev-confirmar" type="text" autocomplete="off" required autofocus>
+        <div class="error" id="ev-error"></div>
+        <div class="fila-botones">
+          <button type="submit" class="peligro">Eliminar viaje</button>
+          <button type="button" class="secundario" id="ev-cancelar">Cancelar</button>
+        </div>
+      </form>
+    `);
+    modal.querySelector("#ev-cancelar").addEventListener("click", cerrar);
+    modal.querySelector("#form-eliminar-viaje").addEventListener("submit", async e => {
+      e.preventDefault();
+      const escrito = modal.querySelector("#ev-confirmar").value.trim();
+      if (escrito !== nombreViaje) {
+        modal.querySelector("#ev-error").textContent = "El nombre no coincide.";
+        return;
+      }
+      await eliminarViajeCompleto();
+      cerrar();
+      window.location.href = "index.html";
     });
   }
 

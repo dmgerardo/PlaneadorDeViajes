@@ -1,4 +1,4 @@
-# Planeador de Viajes
+# Planeador de Viajes Familiar
 
 Una app web para planear viajes largos, de varias ciudades, entre varias personas.
 Sirve como el lugar central donde vas guardando lugares que te interesan, sus prioridades,

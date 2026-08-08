@@ -442,3 +442,71 @@ function buscarEnCatalogoCiudades(texto, limite = 8) {
     .filter(c => normalizarBusqueda(c.nombre).includes(consulta) || normalizarBusqueda(c.pais).includes(consulta))
     .slice(0, limite);
 }
+
+// Moneda oficial "de uso turístico" de cada país del catálogo — alimenta
+// MONEDAS_SOPORTADAS/NOMBRE_MONEDA de abajo, que render-utils.js
+// (opcionesMoneda/camposCosto) y vista-info.js (monedasActivasDe, tarjeta
+// "Monedas del viaje") consumen para el selector de "Agregar moneda". No es
+// un mapa de derecho estricto, es una elección práctica para viajeros: p.ej.
+// Panamá queda en PAB (que cotiza 1:1 con USD), pero El Salvador y Zimbabue
+// quedan en USD porque es la moneda que de verdad circula ahí.
+const MONEDA_POR_PAIS = {
+  "Francia": "EUR", "España": "EUR", "Estados Unidos": "USD", "China": "CNY",
+  "Italia": "EUR", "Turquía": "TRY", "México": "MXN", "Tailandia": "THB",
+  "Alemania": "EUR", "Reino Unido": "GBP", "Japón": "JPY", "Austria": "EUR",
+  "Grecia": "EUR", "Malasia": "MYR", "Rusia": "RUB", "Canadá": "CAD",
+  "Polonia": "PLN", "Países Bajos": "EUR", "Arabia Saudita": "SAR",
+  "Portugal": "EUR", "Hungría": "HUF", "Croacia": "EUR", "Egipto": "EGP",
+  "Emiratos Árabes Unidos": "AED", "Marruecos": "MAD", "Vietnam": "VND",
+  "Indonesia": "IDR", "Corea del Sur": "KRW", "India": "INR", "Suiza": "CHF",
+  "República Checa": "CZK", "Bélgica": "EUR", "Irlanda": "EUR", "Suecia": "SEK",
+  "Dinamarca": "DKK", "Noruega": "NOK", "Finlandia": "EUR", "Australia": "AUD",
+  "Nueva Zelanda": "NZD", "Brasil": "BRL", "Argentina": "ARS", "Perú": "PEN",
+  "Chile": "CLP", "Colombia": "COP", "Cuba": "CUP", "República Dominicana": "DOP",
+  "Costa Rica": "CRC", "Panamá": "PAB", "Guatemala": "GTQ", "Sudáfrica": "ZAR",
+  "Kenia": "KES", "Tanzania": "TZS", "Jordania": "JOD", "Israel": "ILS",
+  "Catar": "QAR", "Singapur": "SGD", "Filipinas": "PHP", "Camboya": "KHR",
+  "Laos": "LAK", "Myanmar": "MMK", "Nepal": "NPR", "Sri Lanka": "LKR",
+  "Bután": "BTN", "Taiwán": "TWD", "Islandia": "ISK", "Eslovenia": "EUR",
+  "Eslovaquia": "EUR", "Bulgaria": "BGN", "Rumania": "RON", "Serbia": "RSD",
+  "Bosnia y Herzegovina": "BAM", "Montenegro": "EUR", "Albania": "ALL",
+  "Chipre": "EUR", "Malta": "EUR", "Luxemburgo": "EUR", "Mónaco": "EUR",
+  "Andorra": "EUR", "Georgia": "GEL", "Armenia": "AMD", "Azerbaiyán": "AZN",
+  "Kazajistán": "KZT", "Uzbekistán": "UZS", "Bolivia": "BOB", "Uruguay": "UYU",
+  "Paraguay": "PYG", "Venezuela": "VES", "Nicaragua": "NIO", "Honduras": "HNL",
+  "El Salvador": "USD", "Belice": "BZD", "Jamaica": "JMD", "Bahamas": "BSD",
+  "Barbados": "BBD", "Trinidad y Tobago": "TTD", "Fiyi": "FJD", "Túnez": "TND",
+  "Etiopía": "ETB", "Ruanda": "RWF", "Botsuana": "BWP", "Namibia": "NAD",
+  "Zimbabue": "USD", "Mauricio": "MUR", "Seychelles": "SCR", "Zambia": "ZMW"
+};
+
+// Nombre legible de cada código, para el selector de "Agregar moneda".
+const NOMBRE_MONEDA = {
+  EUR: "Euro", USD: "Dólar estadounidense", CNY: "Yuan chino", TRY: "Lira turca",
+  MXN: "Peso mexicano", THB: "Baht tailandés", GBP: "Libra esterlina", JPY: "Yen japonés",
+  MYR: "Ringgit malasio", RUB: "Rublo ruso", CAD: "Dólar canadiense", PLN: "Zloty polaco",
+  SAR: "Riyal saudí", HUF: "Forinto húngaro", EGP: "Libra egipcia", AED: "Dirham de EAU",
+  MAD: "Dirham marroquí", VND: "Dong vietnamita", IDR: "Rupia indonesia", KRW: "Won surcoreano",
+  INR: "Rupia india", CHF: "Franco suizo", CZK: "Corona checa", SEK: "Corona sueca",
+  DKK: "Corona danesa", NOK: "Corona noruega", AUD: "Dólar australiano", NZD: "Dólar neozelandés",
+  BRL: "Real brasileño", ARS: "Peso argentino", PEN: "Sol peruano", CLP: "Peso chileno",
+  COP: "Peso colombiano", CUP: "Peso cubano", DOP: "Peso dominicano", CRC: "Colón costarricense",
+  PAB: "Balboa panameño", GTQ: "Quetzal guatemalteco", ZAR: "Rand sudafricano", KES: "Chelín keniano",
+  TZS: "Chelín tanzano", JOD: "Dinar jordano", ILS: "Séquel israelí", QAR: "Riyal catarí",
+  SGD: "Dólar de Singapur", PHP: "Peso filipino", KHR: "Riel camboyano", LAK: "Kip laosiano",
+  MMK: "Kyat birmano", NPR: "Rupia nepalí", LKR: "Rupia de Sri Lanka", BTN: "Ngultrum butanés",
+  TWD: "Dólar taiwanés", ISK: "Corona islandesa", BGN: "Lev búlgaro", RON: "Leu rumano",
+  RSD: "Dinar serbio", BAM: "Marco convertible bosnio", ALL: "Lek albanés", GEL: "Lari georgiano",
+  AMD: "Dram armenio", AZN: "Manat azerbaiyano", KZT: "Tenge kazajo", UZS: "Som uzbeko",
+  BOB: "Boliviano", UYU: "Peso uruguayo", PYG: "Guaraní paraguayo", VES: "Bolívar venezolano",
+  NIO: "Córdoba nicaragüense", HNL: "Lempira hondureño", BZD: "Dólar beliceño", JMD: "Dólar jamaicano",
+  BSD: "Dólar bahameño", BBD: "Dólar de Barbados", TTD: "Dólar de Trinidad y Tobago", FJD: "Dólar fiyiano",
+  TND: "Dinar tunecino", ETB: "Birr etíope", RWF: "Franco ruandés", BWP: "Pula botsuanesa",
+  NAD: "Dólar namibio", MUR: "Rupia mauriciana", SCR: "Rupia de Seychelles", ZMW: "Kwacha zambiano"
+};
+
+// Monedas ofrecidas al agregar una a un viaje (vista-info.js) — la unión de
+// las monedas de todos los países del catálogo, sin repetidos. Si el
+// catálogo crece con un país nuevo, agrégalo también a MONEDA_POR_PAIS de
+// arriba o su moneda no aparecerá aquí.
+const MONEDAS_SOPORTADAS = Array.from(new Set(Object.values(MONEDA_POR_PAIS))).sort();

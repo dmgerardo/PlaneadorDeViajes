@@ -193,17 +193,13 @@ function opcionesZonaHoraria(seleccionada) {
   ).join("");
 }
 
-// Monedas que la app sabe manejar (deliberadamente pocas — un select con
-// ~180 códigos ISO 4217 era ruido para un viaje típico). MXN es siempre la
-// moneda base del reporte consolidado (viajes/{tripId}/monedas, ver abajo).
-const MONEDAS_SOPORTADAS = ["MXN", "USD", "EUR", "JPY", "CAD"];
-const NOMBRE_MONEDA = {
-  MXN: "Peso mexicano",
-  USD: "Dólar estadounidense",
-  EUR: "Euro",
-  JPY: "Yen japonés",
-  CAD: "Dólar canadiense"
-};
+// MONEDAS_SOPORTADAS y NOMBRE_MONEDA viven en js/catalogo-ciudades.js (se
+// derivan de MONEDA_POR_PAIS ahí) — este archivo debe cargarse antes que
+// cualquiera de las funciones de abajo se invoque (ya es el caso: viaje.html
+// carga catalogo-ciudades.js antes de las vista-*.js que llaman a estas
+// funciones). No las redeclares aquí, la app comparte un solo scope global
+// entre <script> — un segundo "const MONEDAS_SOPORTADAS" tronaría con
+// "Identifier has already been declared".
 
 // Monedas disponibles para capturar un costo en este viaje: MXN (siempre,
 // es la base) + las que el admin agregó explícitamente a viajes/{tripId}/

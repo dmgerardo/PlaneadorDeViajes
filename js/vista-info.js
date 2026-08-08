@@ -6,6 +6,7 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta" id="in-progreso"></div>
     <div class="tarjeta" id="in-info"></div>
+    <div class="tarjeta" id="in-costos"></div>
     <div class="tarjeta">
       <h3>Participantes</h3>
       <div class="fila-botones" style="margin-top:0;">
@@ -24,11 +25,79 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   const refCiudades = refNodo(tripId, "ciudades");
   const refCiudadPorDia = refNodo(tripId, "ciudadPorDia");
   const refLugares = refNodo(tripId, "lugares");
+  const refTraslados = refNodo(tripId, "traslados");
+  const refHospedajes = refNodo(tripId, "hospedajes");
 
   let infoCache = {};
   let participantesCache = {};
   let esAdminActual = false;
   const progreso = { ciudades: {}, ciudadPorDia: {}, lugares: {} };
+  const costos = { traslados: {}, hospedajes: {}, lugares: {} };
+
+  // Suma, por moneda, lo capturado en Traslados/Hospedajes/Lugares — un
+  // costo "por persona" se multiplica por el número de participantes para
+  // poder sumarlo junto con los que ya son el total del grupo. Viajes con
+  // gastos en más de una moneda simplemente muestran un bloque por moneda
+  // (no se convierte entre ellas, no hay tipo de cambio en la app).
+  function calcularReporteCostos() {
+    const numParticipantes = Math.max(Object.keys(participantesCache).length, 1);
+    const categorias = [
+      { clave: "traslados", items: costos.traslados },
+      { clave: "hospedajes", items: costos.hospedajes },
+      { clave: "lugares", items: costos.lugares }
+    ];
+    const porMoneda = {};
+    categorias.forEach(({ clave, items }) => {
+      Object.values(items).forEach(item => {
+        if (item.costo === null || item.costo === undefined) return;
+        const moneda = item.moneda || "MXN";
+        const montoTotal = item.costoTipo === "porPersona" ? item.costo * numParticipantes : item.costo;
+        if (!porMoneda[moneda]) porMoneda[moneda] = { traslados: 0, hospedajes: 0, lugares: 0, total: 0 };
+        porMoneda[moneda][clave] += montoTotal;
+        porMoneda[moneda].total += montoTotal;
+      });
+    });
+    return { porMoneda, numParticipantes };
+  }
+
+  const renderCostos = programarRender(() => {
+    const el = document.getElementById("in-costos");
+    if (!el) return;
+    const { porMoneda, numParticipantes } = calcularReporteCostos();
+    const monedas = Object.keys(porMoneda).sort();
+    if (monedas.length === 0) {
+      el.innerHTML = `
+        <h3>Costos del viaje</h3>
+        <p style="font-size:12px;color:var(--color-texto-suave)">
+          Aún no has capturado costos. Agrégalos al editar un traslado, hospedaje o lugar.
+        </p>
+      `;
+      return;
+    }
+    el.innerHTML = `
+      <h3>Costos del viaje</h3>
+      ${monedas.map(moneda => {
+        const c = porMoneda[moneda];
+        const partes = [];
+        if (c.traslados) partes.push(`Traslados: ${esc(formatoCosto(c.traslados, "total", moneda))}`);
+        if (c.hospedajes) partes.push(`Hospedajes: ${esc(formatoCosto(c.hospedajes, "total", moneda))}`);
+        if (c.lugares) partes.push(`Lugares: ${esc(formatoCosto(c.lugares, "total", moneda))}`);
+        const porPersona = numParticipantes > 1
+          ? `<div style="font-size:12px;color:var(--color-texto-suave)">≈ ${esc(formatoCosto(c.total / numParticipantes, "total", moneda))}/persona entre ${numParticipantes}</div>`
+          : "";
+        return `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-heading);">
+              <span>${esc(moneda)}</span>
+              <strong>${esc(formatoCosto(c.total, "total", moneda))}</strong>
+            </div>
+            <div style="font-size:12px;color:var(--color-texto-suave)">${partes.join(" · ")}</div>
+            ${porPersona}
+          </div>
+        `;
+      }).join("")}
+    `;
+  });
 
   // Checklist de prerrequisitos "Ciudades → Ruta → Lugares" — cada uno
   // habilita mejor al siguiente (Ruta necesita ciudades capturadas; el
@@ -150,6 +219,7 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
       esAdminActual = yoSoyAdmin;
       renderInfo(infoCache); // refresca los botones de admin (Renombrar/Eliminar) del encabezado
     }
+    renderCostos(); // el número de participantes cambia el total "por persona"
     Object.entries(participantes).forEach(([userId, p]) => {
       const fila = document.createElement("div");
       fila.className = "lista-item";
@@ -307,10 +377,13 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   const cancelarParticipantes = escuchar(refParticipantes, renderParticipantes);
   const cancelarCiudadesProgreso = escuchar(refCiudades, v => { progreso.ciudades = v; renderProgreso(); });
   const cancelarCiudadPorDiaProgreso = escuchar(refCiudadPorDia, v => { progreso.ciudadPorDia = v; renderProgreso(); });
-  const cancelarLugaresProgreso = escuchar(refLugares, v => { progreso.lugares = v; renderProgreso(); });
+  const cancelarLugaresProgreso = escuchar(refLugares, v => { progreso.lugares = v; costos.lugares = v; renderProgreso(); renderCostos(); });
+  const cancelarTrasladosCostos = escuchar(refTraslados, v => { costos.traslados = v; renderCostos(); });
+  const cancelarHospedajesCostos = escuchar(refHospedajes, v => { costos.hospedajes = v; renderCostos(); });
 
   return () => {
     cancelarInfo(); cancelarParticipantes();
     cancelarCiudadesProgreso(); cancelarCiudadPorDiaProgreso(); cancelarLugaresProgreso();
+    cancelarTrasladosCostos(); cancelarHospedajesCostos();
   };
 }

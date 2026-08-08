@@ -543,6 +543,42 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     area.appendChild(div);
   }
 
+  // Modal de solo lectura con la info del lugar (nombre, categoría, ciudad,
+  // horario agendado, notas, costo, ligas de mapa/sitio web) — se abre al
+  // tocar el bloque en Calendario/Agenda sin arrastrarlo, para no tener que
+  // ir hasta la pestaña Lugares a consultarlo. ETIQUETA_CATEGORIA_LUGAR
+  // viene de vista-lugares.js (mismo scope global de script, ya cargado).
+  function mostrarInfoLugar(lugar, bloque, zonaHoraria) {
+    const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
+    const etiquetaZona = zonaVistaNoche ? "vista" : "local";
+    const ciudad = estado.ciudades[lugar.ciudadId];
+    const ligaWeb = (lugar.ligas || [])[0];
+    const horaOrigenTxt = zonaOrigen !== zonaHoraria
+      ? `<p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} hora de origen</p>`
+      : "";
+    const { modal, cerrar } = abrirModal(`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <h3 style="margin:0;">${lugar.aireLibre ? icono("snowflake", 15) + " " : ""}${esc(lugar.nombre)}</h3>
+        <span class="chip ${esc(lugar.categoria)}">${esc(ETIQUETA_CATEGORIA_LUGAR[lugar.categoria] || lugar.categoria)}</span>
+      </div>
+      <p style="font-size:13px;color:var(--color-texto-suave);margin:4px 0 8px;">
+        ${esc(ciudad ? ciudad.nombre : "")} · ${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} ${etiquetaZona}
+      </p>
+      ${horaOrigenTxt}
+      ${lugar.costo != null ? `<p style="font-size:13px;">${esc(formatoCosto(lugar.costo, lugar.costoTipo, lugar.moneda))}</p>` : ""}
+      ${lugar.notas ? `<p style="font-size:13px;white-space:pre-wrap;">${esc(lugar.notas)}</p>` : ""}
+      ${(lugar.liga_mapa || ligaWeb) ? `
+      <div class="fila-botones">
+        ${lugar.liga_mapa ? `<a href="${esc(lugar.liga_mapa)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("map", "Mapa", 14)}</button></a>` : ""}
+        ${ligaWeb ? `<a href="${esc(ligaWeb)}" target="_blank" rel="noopener noreferrer"><button type="button" class="secundario">${iconoTexto("link", "Sitio web", 14)}</button></a>` : ""}
+      </div>` : ""}
+      <div class="fila-botones">
+        <button type="button" class="secundario" id="il-cerrar">Cerrar</button>
+      </div>
+    `);
+    modal.querySelector("#il-cerrar").addEventListener("click", cerrar);
+  }
+
   // zonaHoraria: zona de posición de esta columna (zonaPosicion — la MISMA
   // para todos los bloques de la columna, ver calcularPosicionBloque). dia:
   // día de la columna.
@@ -595,6 +631,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     if (!bloque.fijado) {
       habilitarArrastre(div, area, id, bloque, zonaHoraria, ciudadPorDia);
       habilitarRedimension(div.querySelector(".resize"), area, id, bloque, zonaHoraria);
+    } else {
+      // Fijado: sin arrastre/redimensión (ver arriba), así que un tap normal
+      // no tiene ningún otro manejador que lo intercepte — basta un "click".
+      div.addEventListener("click", e => {
+        if (e.target.closest("[data-accion]")) return;
+        mostrarInfoLugar(lugar, bloque, zonaHoraria);
+      });
     }
 
     area.appendChild(div);
@@ -648,8 +691,14 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       if (!arrastrando) return;
       arrastrando = false;
       div.style.zIndex = "";
-      // Un tap sin arrastre real no debe mover ni reescribir nada.
-      if (!seMovio) return;
+      // Un tap sin arrastre real no debe mover ni reescribir nada — en vez
+      // de eso, muestra la info del lugar (zonaActual sigue siendo la zona
+      // en la que se dibujó, al no haberse movido de columna).
+      if (!seMovio) {
+        const lugar = estado.lugares[bloque.refId];
+        if (lugar) mostrarInfoLugar(lugar, bloque, zonaActual);
+        return;
+      }
       const dia = areaActual.dataset.dia;
       const nuevaHoraDecimal = nuevoTop / HORA_PX;
       const duracionHoras = (new Date(bloque.finUTC) - new Date(bloque.inicioUTC)) / 3600000;

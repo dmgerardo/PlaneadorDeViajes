@@ -6,6 +6,7 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
     <div class="tarjeta" id="in-progreso"></div>
     <div class="tarjeta" id="in-info"></div>
+    <div class="tarjeta" id="in-monedas"></div>
     <div class="tarjeta" id="in-costos"></div>
     <div class="tarjeta">
       <h3>Participantes</h3>
@@ -27,18 +28,69 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   const refLugares = refNodo(tripId, "lugares");
   const refTraslados = refNodo(tripId, "traslados");
   const refHospedajes = refNodo(tripId, "hospedajes");
+  const refMonedas = refNodo(tripId, "monedas");
 
   let infoCache = {};
   let participantesCache = {};
+  let monedasCache = {};
   let esAdminActual = false;
   const progreso = { ciudades: {}, ciudadPorDia: {}, lugares: {} };
   const costos = { traslados: {}, hospedajes: {}, lugares: {} };
 
+  // Tarjeta "Monedas del viaje": el admin activa/desactiva cuáles de las
+  // MONEDAS_SOPORTADAS se ofrecen al capturar un costo, y fija un tipo de
+  // cambio a MXN por moneda para el total consolidado de abajo. Cada
+  // checkbox/input guarda solo. Visible para todos (todos capturan costos y
+  // necesitan saber qué moneda usar), pero solo editable si es admin.
+  const renderMonedas = programarRender(() => {
+    const el = document.getElementById("in-monedas");
+    if (!el) return;
+    el.innerHTML = `
+      <h3>Monedas del viaje</h3>
+      <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
+        Estas son las monedas disponibles al capturar un costo. Fija un tipo de cambio a MXN
+        en cada una para ver el total consolidado.
+      </p>
+      <div id="in-monedas-lista"></div>
+    `;
+    const lista = document.getElementById("in-monedas-lista");
+    MONEDAS_SOPORTADAS.forEach(codigo => {
+      const entrada = monedasCache[codigo] || {};
+      const esBase = codigo === "MXN";
+      const activa = monedaEstaActiva(monedasCache, codigo);
+      const fila = document.createElement("div");
+      fila.className = "lista-item";
+      fila.style.alignItems = "center";
+      fila.innerHTML = `
+        <label style="display:flex;align-items:center;gap:8px;flex:1;">
+          <input type="checkbox" data-moneda-activa="${esc(codigo)}" ${activa ? "checked" : ""} ${esBase || !esAdminActual ? "disabled" : ""}>
+          ${esc(codigo)} <span style="color:var(--color-texto-suave);font-size:12px;">— ${esc(NOMBRE_MONEDA[codigo])}</span>
+        </label>
+        ${esBase
+          ? `<span style="font-size:12px;color:var(--color-texto-suave)">Moneda base</span>`
+          : `<input type="number" min="0" step="0.0001" data-tipo-cambio="${esc(codigo)}" placeholder="1 ${esc(codigo)} = ? MXN"
+               value="${entrada.tipoCambioMXN != null ? esc(entrada.tipoCambioMXN) : ""}" style="width:150px;" ${esAdminActual ? "" : "disabled"}>`}
+      `;
+      if (esAdminActual && !esBase) {
+        fila.querySelector("[data-moneda-activa]").addEventListener("change", e => {
+          actualizar(refMonedas.child(codigo), { activa: e.target.checked });
+        });
+        fila.querySelector("[data-tipo-cambio]").addEventListener("change", e => {
+          const valor = e.target.value === "" ? null : Number(e.target.value);
+          actualizar(refMonedas.child(codigo), { tipoCambioMXN: Number.isFinite(valor) ? valor : null });
+        });
+      }
+      lista.appendChild(fila);
+    });
+  });
+
   // Suma, por moneda, lo capturado en Traslados/Hospedajes/Lugares — un
   // costo "por persona" se multiplica por el número de participantes para
-  // poder sumarlo junto con los que ya son el total del grupo. Viajes con
-  // gastos en más de una moneda simplemente muestran un bloque por moneda
-  // (no se convierte entre ellas, no hay tipo de cambio en la app).
+  // poder sumarlo junto con los que ya son el total del grupo. Además arma
+  // un total consolidado en MXN usando el tipo de cambio fijo de cada
+  // moneda (viajes/{tripId}/monedas) — las monedas sin tipo de cambio
+  // capturado quedan fuera de ese consolidado (se listan aparte) en vez de
+  // sumarse como si valieran lo mismo que un peso.
   function calcularReporteCostos() {
     const numParticipantes = Math.max(Object.keys(participantesCache).length, 1);
     const categorias = [
@@ -57,13 +109,21 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
         porMoneda[moneda].total += montoTotal;
       });
     });
-    return { porMoneda, numParticipantes };
+    let totalConsolidadoMXN = 0;
+    const monedasSinTipoCambio = [];
+    Object.entries(porMoneda).forEach(([moneda, c]) => {
+      if (moneda === "MXN") { totalConsolidadoMXN += c.total; return; }
+      const tasa = monedasCache[moneda] && monedasCache[moneda].tipoCambioMXN;
+      if (tasa) totalConsolidadoMXN += c.total * tasa;
+      else monedasSinTipoCambio.push(moneda);
+    });
+    return { porMoneda, numParticipantes, totalConsolidadoMXN, monedasSinTipoCambio };
   }
 
   const renderCostos = programarRender(() => {
     const el = document.getElementById("in-costos");
     if (!el) return;
-    const { porMoneda, numParticipantes } = calcularReporteCostos();
+    const { porMoneda, numParticipantes, totalConsolidadoMXN, monedasSinTipoCambio } = calcularReporteCostos();
     const monedas = Object.keys(porMoneda).sort();
     if (monedas.length === 0) {
       el.innerHTML = `
@@ -74,8 +134,23 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
       `;
       return;
     }
+    // El consolidado no aporta nada si todo ya está en MXN (sería el mismo
+    // número dos veces) — en cualquier otro caso (una o más monedas ajenas
+    // con tipo de cambio capturado) sí vale mostrarlo.
+    const soloMXN = monedas.length === 1 && monedas[0] === "MXN";
+    const mostrarConsolidado = totalConsolidadoMXN > 0 && !soloMXN;
     el.innerHTML = `
       <h3>Costos del viaje</h3>
+      ${mostrarConsolidado ? `
+        <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--color-borde);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-heading);font-size:17px;">
+            <span>Total consolidado</span>
+            <strong>${esc(formatoCosto(totalConsolidadoMXN, "total", "MXN"))}</strong>
+          </div>
+          ${numParticipantes > 1 ? `<div style="font-size:12px;color:var(--color-texto-suave)">≈ ${esc(formatoCosto(totalConsolidadoMXN / numParticipantes, "total", "MXN"))}/persona entre ${numParticipantes}</div>` : ""}
+          ${monedasSinTipoCambio.length > 0 ? `<div style="font-size:12px;color:var(--color-texto-suave)">Sin tipo de cambio capturado, no incluidas: ${monedasSinTipoCambio.map(esc).join(", ")} (ver "Monedas del viaje")</div>` : ""}
+        </div>
+      ` : ""}
       ${monedas.map(moneda => {
         const c = porMoneda[moneda];
         const partes = [];
@@ -218,6 +293,7 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     if (yoSoyAdmin !== esAdminActual) {
       esAdminActual = yoSoyAdmin;
       renderInfo(infoCache); // refresca los botones de admin (Renombrar/Eliminar) del encabezado
+      renderMonedas(); // habilita/deshabilita los controles de activar/tipo de cambio
     }
     renderCostos(); // el número de participantes cambia el total "por persona"
     Object.entries(participantes).forEach(([userId, p]) => {
@@ -380,10 +456,11 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   const cancelarLugaresProgreso = escuchar(refLugares, v => { progreso.lugares = v; costos.lugares = v; renderProgreso(); renderCostos(); });
   const cancelarTrasladosCostos = escuchar(refTraslados, v => { costos.traslados = v; renderCostos(); });
   const cancelarHospedajesCostos = escuchar(refHospedajes, v => { costos.hospedajes = v; renderCostos(); });
+  const cancelarMonedas = escuchar(refMonedas, v => { monedasCache = v; renderMonedas(); renderCostos(); });
 
   return () => {
     cancelarInfo(); cancelarParticipantes();
     cancelarCiudadesProgreso(); cancelarCiudadPorDiaProgreso(); cancelarLugaresProgreso();
-    cancelarTrasladosCostos(); cancelarHospedajesCostos();
+    cancelarTrasladosCostos(); cancelarHospedajesCostos(); cancelarMonedas();
   };
 }

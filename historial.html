@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=41"></script>
+<script src="js/tema.js?v=42"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=41">
+<link rel="stylesheet" href="css/estilos.css?v=42">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,14 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v42 — Corrección al fix de traslados de v41: no más traslados "fantasma"</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li><strong>Corregido:</strong> el fix de v41 tenía un efecto secundario — al decidir si un traslado tocaba un día, comparaba contra la zona horaria de la columna que se estaba dibujando en vez de contra las zonas propias del traslado (origen/destino). Con ciudades muy separadas en huso horario (p.ej. México y Tokio), esto podía hacer que un traslado sin relación con esa ciudad apareciera de todos modos ese día, solo por la aritmética de zonas. Ya usa siempre la zona del origen/destino del traslado (o de la ciudad del hospedaje), nunca la de la columna.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v41 — Traslados de más de un día ya no desaparecen en Calendario/Ruta</h3>
@@ -400,7 +408,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=41"></script>
-  <script src="js/version.js?v=41"></script>
+  <script src="js/app-version.js?v=42"></script>
+  <script src="js/version.js?v=42"></script>
 </body>
 </html>

@@ -193,7 +193,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         </div>
       ` : ""}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <label for="cal-zona-vista" style="margin:0;font-size:12px;">Sombreado de noche en la hora de:</label>
+        <label for="cal-zona-vista" style="margin:0;font-size:12px;">Selecciona huso horario a mostrar:</label>
         <select id="cal-zona-vista" style="flex:1;"></select>
       </div>
       <div class="cal-body">

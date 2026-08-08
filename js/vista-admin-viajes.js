@@ -149,6 +149,9 @@ document.getElementById("campo-contrasena").addEventListener("keydown", e => {
 
 document.getElementById("btn-salir").addEventListener("click", cerrarSesion);
 
+document.getElementById("btn-unirse-viaje").innerHTML = icono("link", 18);
+document.getElementById("btn-crear-viaje").innerHTML = icono("plus", 20);
+
 document.getElementById("btn-crear-viaje").addEventListener("click", () => {
   const sesion = obtenerSesion();
   const { modal, cerrar } = abrirModal(`

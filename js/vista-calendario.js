@@ -817,6 +817,7 @@ async function montarVistaAgendaCalendario(contenedor, tripId, sesion) {
   let limpiarInterno = null;
 
   contenedor.innerHTML = `
+    <h2 style="margin-bottom:8px;">Agenda</h2>
     <div class="segmentado" id="ac-switch">
       <button type="button" data-modo="agenda">Día</button>
       <button type="button" data-modo="cuadricula">Calendario</button>

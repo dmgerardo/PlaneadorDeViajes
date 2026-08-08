@@ -294,10 +294,12 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
   background: none;
   color: var(--color-texto-suave);
   border-radius: 0;
-  padding: 14px 16px;
-  font-family: var(--font-heading);
-  font-weight: 400;
-  white-space: nowrap;
+  flex: 1 1 0;
+  min-width: 56px;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .tabs button.activo { color: var(--color-primario); border-bottom: 2px solid var(--color-primario); }
 

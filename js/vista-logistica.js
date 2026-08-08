@@ -5,6 +5,7 @@
 
 async function montarVistaLogistica(contenedor, tripId, sesion) {
   contenedor.innerHTML = `
+    <h2 style="margin-bottom:8px;">Logística</h2>
     <div class="tarjeta">
       <div class="encabezado-seccion">
         <h3>Traslados</h3>

@@ -3,8 +3,12 @@
 // restaurante, etc.) — mismo modelo de datos, con un campo "categoria" que
 // las separa, y un switch arriba para alternar entre las dos.
 // Cada persona tiene su propio checkbox de hecho/no hecho por ítem.
-// Los ítems se pueden reordenar arrastrando desde la manija ⠿⠿ (el orden es
-// independiente entre categorías).
+// Los ítems se reordenan con flechas ↑/↓ por renglón (el orden es
+// independiente entre categorías). Antes era arrastre con una manija ⠿⠿,
+// pero el navegador competía por el mismo gesto (seleccionar texto con
+// mouse, o el menú/lupa de selección al mantener presionado en móvil) y el
+// resultado era errático incluso con preventDefault() — un botón es un
+// gesto que el navegador no puede confundir con otra cosa.
 
 const CATEGORIA_CHECKLIST_DEFAULT = "empaque";
 
@@ -51,62 +55,28 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
     });
   });
 
-  function habilitarArrastreFila(tr, id, tabla) {
-    const handle = tr.querySelector(".chk-handle");
-    let arrastrando = false;
+  // Lista ordenada de [id, item] de la categoría actual — misma función que
+  // usa render(), reutilizada por moverItem() para saber el vecino a
+  // intercambiar y reescribir el orden de TODOS los ítems de esa categoría
+  // (0..N-1), no solo los dos que se mueven — así nunca quedan valores de
+  // "orden" empatados o huecos por datos viejos.
+  function itemsOrdenados() {
+    return Object.entries(itemsCache)
+      .filter(([, item]) => categoriaDe(item) === categoriaActual)
+      .sort((a, b) => (a[1].orden ?? 9999) - (b[1].orden ?? 9999));
+  }
 
-    // preventDefault() en pointerdown es lo que de verdad evita que el
-    // navegador arranque su propio gesto (selección de texto al arrastrar
-    // con mouse, o el menú/lupa de selección al mantener presionado en
-    // móvil — eso era lo que hacía "se deshabilite" el renglón: el gesto
-    // nativo tomaba el control antes de que nuestro drag empezara). El
-    // pointer capture ya redirige los eventos siguientes al handle pase lo
-    // que pase debajo del dedo/cursor, pero sin este preventDefault() el
-    // navegador igual dispara su selección nativa desde el mousedown/
-    // touchstart original. tabla.classList "arrastrando-fila" (ver
-    // estilos.css) refuerza con user-select:none mientras dura el arrastre.
-    handle.addEventListener("pointerdown", e => {
-      e.preventDefault();
-      arrastrando = true;
-      handle.setPointerCapture(e.pointerId);
-      tr.style.opacity = "0.5";
-      tabla.classList.add("arrastrando-fila");
+  async function moverItem(id, delta) {
+    const items = itemsOrdenados();
+    const indice = items.findIndex(([itemId]) => itemId === id);
+    const destino = indice + delta;
+    if (indice === -1 || destino < 0 || destino >= items.length) return;
+    [items[indice], items[destino]] = [items[destino], items[indice]];
+    const mapaCompleto = {};
+    items.forEach(([itemId], nuevoIndice) => {
+      mapaCompleto[`viajes/${tripId}/checklist/${itemId}/orden`] = nuevoIndice;
     });
-    handle.addEventListener("pointermove", e => {
-      if (!arrastrando) return;
-      e.preventDefault();
-      const filas = Array.from(tabla.querySelectorAll("tr[data-id]")).filter(f => f !== tr);
-      const y = e.clientY;
-      let destino = null;
-      for (const fila of filas) {
-        const rect = fila.getBoundingClientRect();
-        if (y < rect.top + rect.height / 2) { destino = fila; break; }
-      }
-      if (destino) tabla.insertBefore(tr, destino);
-      else tabla.appendChild(tr);
-    });
-    async function terminarArrastre() {
-      if (!arrastrando) return;
-      arrastrando = false;
-      tr.style.opacity = "";
-      tabla.classList.remove("arrastrando-fila");
-      const filasFinal = Array.from(tabla.querySelectorAll("tr[data-id]"));
-      const mapaCompleto = {};
-      filasFinal.forEach((fila, index) => {
-        mapaCompleto[`viajes/${tripId}/checklist/${fila.dataset.id}/orden`] = index;
-      });
-      await actualizarMultiple(mapaCompleto);
-    }
-    handle.addEventListener("pointerup", terminarArrastre);
-    // Si el sistema interrumpe el gesto (p.ej. una notificación, o el
-    // navegador decide que es un gesto de otro tipo a medio camino), sin
-    // esto el renglón se quedaba a medias (opacidad 0.5, tabla bloqueada)
-    // sin ningún pointerup que lo resolviera.
-    handle.addEventListener("pointercancel", () => {
-      arrastrando = false;
-      tr.style.opacity = "";
-      tabla.classList.remove("arrastrando-fila");
-    });
+    await actualizarMultiple(mapaCompleto);
   }
 
   function render() {
@@ -124,9 +94,7 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
     `;
     tabla.appendChild(filaEncabezado);
 
-    const items = Object.entries(itemsCache)
-      .filter(([, item]) => categoriaDe(item) === categoriaActual)
-      .sort((a, b) => (a[1].orden ?? 9999) - (b[1].orden ?? 9999));
+    const items = itemsOrdenados();
     if (items.length === 0) {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td colspan="${personas.length + 3}" style="padding:12px;color:var(--color-texto-suave);text-align:center;">Sin ítems todavía.</td>`;
@@ -134,12 +102,15 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       return;
     }
 
-    items.forEach(([id, item]) => {
+    items.forEach(([id, item], indice) => {
       const tr = document.createElement("tr");
       tr.dataset.id = id;
       tr.style.borderTop = "1px solid var(--color-borde)";
       tr.innerHTML = `
-        <td class="chk-handle" style="padding:6px;text-align:center;color:var(--color-texto-suave);">⠿⠿</td>
+        <td style="padding:2px;text-align:center;white-space:nowrap;">
+          <button type="button" class="texto" data-mover="-1" aria-label="Subir" title="Subir" ${indice === 0 ? "disabled" : ""} style="padding:4px;">${icono("chevron-up", 15)}</button>
+          <button type="button" class="texto" data-mover="1" aria-label="Bajar" title="Bajar" ${indice === items.length - 1 ? "disabled" : ""} style="padding:4px;">${icono("chevron-down", 15)}</button>
+        </td>
         <td style="padding:6px;">${esc(item.nombre)}</td>
         ${personas.map(([userId]) => `
           <td style="text-align:center;padding:6px;">
@@ -157,8 +128,9 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       tr.querySelector("[data-borrar]").addEventListener("click", () => {
         if (confirm("¿Quitar este ítem del checklist?")) eliminar(refChecklist.child(id));
       });
-
-      habilitarArrastreFila(tr, id, tabla);
+      tr.querySelectorAll("[data-mover]").forEach(btn => {
+        btn.addEventListener("click", () => moverItem(id, Number(btn.dataset.mover)));
+      });
     });
   }
 

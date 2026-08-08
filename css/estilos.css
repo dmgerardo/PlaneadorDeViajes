@@ -318,6 +318,7 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 /* Fila superior de #nav-viaje: botón "← Viajes" + switch de grupo (En el
    viaje / Planeación) + badge de versión, todo en un solo renglón. */
 .fila-superior { display: flex; align-items: center; gap: 8px; padding: 8px 10px 0; }
+#btn-volver:disabled { opacity: 0.35; cursor: default; }
 .grupo-switch { display: flex; gap: 6px; flex: 1; }
 .grupo-switch button {
   flex: 1;

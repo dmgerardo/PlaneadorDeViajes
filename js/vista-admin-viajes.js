@@ -7,7 +7,18 @@ function generarClaveInvitacion() {
   return idCorto().toUpperCase();
 }
 
-async function mostrarPantallaViajes(sesion) {
+// opciones.autoRedirigirSiUnico: si la persona tiene exactamente un viaje,
+// entra directo a él en vez de mostrar una pantalla de elección que no
+// tiene caso con un solo viaje. Solo se activa al llegar aquí "de forma
+// normal" (login recién hecho, o abrir la app con sesión ya iniciada) —
+// NUNCA cuando viene de presionar "← Viajes" desde dentro de un viaje (ver
+// vieneDeVolver más abajo), porque ese botón sirve justo para poder elegir
+// otro viaje o crear uno nuevo, aunque solo tengas uno; auto-redirigir ahí
+// dejaría el botón inservible. Tampoco se activa después de unirse a un
+// viaje por clave o si falló ese intento, para no tapar el mensaje de error
+// ni saltarte la lista justo cuando la persona está interactuando con ella.
+async function mostrarPantallaViajes(sesion, opciones = {}) {
+  const autoRedirigirSiUnico = !!opciones.autoRedirigirSiUnico;
   pantallaLogin.classList.add("oculto");
   pantallaViajes.classList.remove("oculto");
   document.getElementById("saludo").textContent = `Hola, ${sesion.nombre}`;
@@ -16,6 +27,11 @@ async function mostrarPantallaViajes(sesion) {
   const snapUsuario = await db.ref(`usuarios/${sesion.userId}`).get();
   const usuario = snapUsuario.val() || {};
   const idsViajes = Object.keys(usuario.viajesInvitado || {});
+
+  if (autoRedirigirSiUnico && idsViajes.length === 1) {
+    window.location.href = `viaje.html?trip=${encodeURIComponent(idsViajes[0])}`;
+    return;
+  }
 
   if (idsViajes.length === 0) {
     limpiar(listaEl);
@@ -49,6 +65,10 @@ async function mostrarPantallaViajes(sesion) {
 
 const claveUnirseURL = new URLSearchParams(window.location.search).get("unirse");
 if (claveUnirseURL) document.getElementById("aviso-invitacion").classList.remove("oculto");
+
+// viaje.html manda este parámetro al presionar "← Viajes" — ver
+// autoRedirigirSiUnico en mostrarPantallaViajes.
+const vieneDeVolver = new URLSearchParams(window.location.search).get("volver") === "1";
 
 // Une a la sesión al viaje con esa clave y navega directo a él (usado por la liga de invitación).
 async function unirseYAbrir(sesion, clave) {
@@ -112,7 +132,7 @@ document.getElementById("btn-entrar").addEventListener("click", async () => {
       await unirseYAbrir(sesion, claveUnirseURL);
       return;
     }
-    await mostrarPantallaViajes(sesion);
+    await mostrarPantallaViajes(sesion, { autoRedirigirSiUnico: !vieneDeVolver });
   } catch (e) {
     errorEl.textContent = e.message;
   }
@@ -203,5 +223,5 @@ document.getElementById("btn-unirse-viaje").addEventListener("click", () => {
     await unirseYAbrir(sesion, claveUnirseURL);
     return;
   }
-  await mostrarPantallaViajes(sesion);
+  await mostrarPantallaViajes(sesion, { autoRedirigirSiUnico: !vieneDeVolver });
 })();

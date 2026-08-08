@@ -170,32 +170,48 @@ input[type="checkbox"], input[type="radio"] {
 input[type="radio"] { border-radius: 50%; }
 
 /* input[type="date"] hereda appearance:none de la regla de arriba (para el
-   look de pill del resto de los campos). Eso deja el layout interno nativo
-   (value/spin-button/calendar-picker-indicator) sin su flex normal, y el
-   ícono del calendario se estira a ocupar TODO el ancho del campo en vez de
-   ser un ícono chico a la derecha — por eso se saca del flujo con
-   position:absolute (así no depende de ese flex interno) y se le deja
-   espacio con padding-right en el input. El ícono nativo es oscuro fijo —
-   se invierte en modo oscuro para que siga siendo visible. */
-input[type="date"] { position: relative; padding-right: 40px; }
-input[type="date"]::-webkit-calendar-picker-indicator {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  opacity: 0.75;
-  background: transparent;
+   look de pill del resto de los campos). El ícono nativo del calendario
+   (::-webkit-calendar-picker-indicator) se comporta distinto según el
+   navegador con appearance:none — en Chrome/Edge de escritorio se estira a
+   ocupar todo el ancho del campo, y en iOS Safari directamente desaparece
+   (WebKit móvil no expone ese pseudo-elemento igual que Chromium). En vez
+   de perseguir ese pseudo-elemento por navegador, se dibuja un ícono propio
+   (mismo trazo que el resto de los íconos Lucide de la app) como
+   background-image del input — funciona igual en todos lados porque no
+   depende de ningún render nativo. El indicador nativo se deja ahí (sigue
+   siendo lo que realmente abre el selector al tocarlo) pero invisible, del
+   mismo tamaño del ícono dibujado, para no duplicar visualmente el ícono
+   en los navegadores que sí lo pintan. */
+input[type="date"] {
+  position: relative;
+  padding-right: 40px;
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 18px 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2379746c' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
 }
 @media (prefers-color-scheme: dark) {
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+  input[type="date"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23988c88' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  }
 }
-:root[data-theme="oscuro"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-:root[data-theme="claro"] input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+:root[data-theme="oscuro"] input[type="date"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23988c88' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+:root[data-theme="claro"] input[type="date"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2379746c' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 
 /* Flecha propia para <select>, ya que appearance:none quita la nativa. */
 select {

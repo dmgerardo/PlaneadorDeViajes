@@ -515,6 +515,20 @@ button.texto { background: none; color: var(--color-primario); padding: 4px 6px;
 .cal-bloque .accion-fijar::before, .cal-bloque .accion-quitar::before {
   content: ""; position: absolute; inset: -12px;
 }
+/* Ligas de Mapa/sitio web del lugar (si las capturó en la pestaña Lugares):
+   mismo patrón que accion-fijar/accion-quitar, en espejo del lado
+   izquierdo — mapa arriba, web abajo (encima de la manija de redimensionar,
+   igual que accion-fijar). Color heredado del bloque (currentColor), no el
+   azul de enlace por default del navegador. */
+.cal-bloque .accion-mapa, .cal-bloque .accion-web {
+  position: absolute; left: 1px; font-size: 12px; line-height: 1;
+  cursor: pointer; opacity: 0.9; padding: 4px; z-index: 2; color: inherit;
+}
+.cal-bloque .accion-mapa { top: 1px; }
+.cal-bloque .accion-web { bottom: 1px; }
+.cal-bloque .accion-mapa::before, .cal-bloque .accion-web::before {
+  content: ""; position: absolute; inset: -12px;
+}
 .cal-bloque .resize { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; cursor: row-resize; touch-action: none; }
 .cal-bloque .resize::before {
   content: ""; position: absolute; top: -15px; bottom: -15px; left: 0; right: 0;

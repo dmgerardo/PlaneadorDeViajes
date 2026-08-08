@@ -31,9 +31,11 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
 
   const refLugares = refNodo(tripId, "lugares");
   const refCiudades = refNodo(tripId, "ciudades");
+  const refMonedas = refNodo(tripId, "monedas");
 
   let ciudadesCache = {};
   let lugaresCache = {};
+  let monedasCache = {};
   let filtroCiudad = "";
   let filtroCategoria = "";
 
@@ -157,7 +159,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
         </label>
         <label for="fl-notas">Notas</label>
         <textarea id="fl-notas" placeholder="Opcional">${esc(existente ? (existente.notas || "") : "")}</textarea>
-        ${camposCosto("fl", existente, "porPersona")}
+        ${camposCosto("fl", existente, "porPersona", monedasActivasDe(monedasCache))}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fl-cancelar">Cancelar</button>
@@ -200,6 +202,7 @@ async function montarVistaLugares(contenedor, tripId, sesion) {
 
   const cancelarCiudades = escuchar(refCiudades, renderCiudades);
   const cancelarLugares = escuchar(refLugares, renderLugares);
+  const cancelarMonedas = escuchar(refMonedas, v => { monedasCache = v; });
 
-  return () => { cancelarCiudades(); cancelarLugares(); };
+  return () => { cancelarCiudades(); cancelarLugares(); cancelarMonedas(); };
 }

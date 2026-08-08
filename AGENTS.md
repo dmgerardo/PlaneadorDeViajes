@@ -99,12 +99,20 @@ viajes/{tripId}:
   // costo/costoTipo/moneda (traslados, hospedajes, lugares): costo es opcional
   // (null si no se ha capturado — así el reporte no lo cuenta como $0).
   // costoTipo es "total" (cubre a todos los viajeros) o "porPersona"; moneda es
-  // un código ISO 4217 ("MXN", "USD"…). Compartido entre los tres formularios
-  // vía camposCosto()/leerCamposCosto() (render-utils.js) — no dupliques esos
-  // campos a mano en una vista nueva. El reporte de costos (pestaña Info,
-  // vista-info.js: calcularReporteCostos) agrupa por moneda sin convertir entre
-  // ellas (no hay tipo de cambio en la app) y multiplica los "porPersona" por
-  // el número de participantes para sumarlos junto con los que ya son el total.
+  // uno de MONEDAS_SOPORTADAS ("MXN","USD","EUR","JPY","CAD" — render-utils.js).
+  // Compartido entre los tres formularios vía camposCosto()/leerCamposCosto()
+  // (render-utils.js) — no dupliques esos campos a mano en una vista nueva.
+  monedas/{codigoISO}: { activa, tipoCambioMXN }
+  // Config del admin por viaje (vista-info.js, tarjeta "Monedas del viaje"):
+  // qué monedas de MONEDAS_SOPORTADAS se ofrecen al capturar un costo, y su
+  // tipo de cambio fijo a MXN. MXN es siempre activa y su tasa es 1 (no vive
+  // en este nodo). Si el nodo no existe o falta una moneda, se trata como
+  // activa por default (monedaEstaActiva() en render-utils.js) — así un viaje
+  // que nunca tocó esta pestaña sigue ofreciendo las 5. El reporte de costos
+  // (pestaña Info, vista-info.js: calcularReporteCostos) agrupa por moneda
+  // (multiplicando los "porPersona" por el número de participantes) y además
+  // arma un total consolidado en MXN usando tipoCambioMXN — las monedas sin
+  // tasa capturada quedan fuera de ese consolidado, no se inventa un valor.
   checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden, categoria }
   // categoria: "empaque" (antes de viajar) | "viaje" (durante el viaje) — sin categoria
   // se trata como "empaque" (ítems de antes de que existiera el campo). El orden es

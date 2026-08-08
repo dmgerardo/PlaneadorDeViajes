@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=35"></script>
+<script src="js/tema.js?v=36"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=35">
+<link rel="stylesheet" href="css/estilos.css?v=36">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,16 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v36 — Monedas activas por viaje y reporte consolidado en MXN</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li>El selector de moneda ahora ofrece solo 5: MXN, USD, EUR, JPY y CAD.</li>
+        <li>Nueva tarjeta "Monedas del viaje" en Info (solo el admin la edita): activa/desactiva cuáles de esas 5 se ofrecen al capturar un costo, y fija un tipo de cambio de cada una a MXN.</li>
+        <li>El reporte de "Costos del viaje" ahora muestra, además del desglose por moneda, un <strong>total consolidado en MXN</strong> usando esos tipos de cambio — las monedas sin tipo de cambio capturado quedan fuera del consolidado (se avisa cuáles).</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v35 — Costos y reporte de gastos del viaje</h3>
@@ -346,7 +356,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=35"></script>
-  <script src="js/version.js?v=35"></script>
+  <script src="js/app-version.js?v=36"></script>
+  <script src="js/version.js?v=36"></script>
 </body>
 </html>

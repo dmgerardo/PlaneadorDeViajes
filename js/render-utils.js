@@ -193,17 +193,41 @@ function opcionesZonaHoraria(seleccionada) {
   ).join("");
 }
 
-// Códigos de moneda ISO 4217 soportados por el navegador, mismo patrón que
-// ZONAS_HORARIAS de arriba (lista nativa + fallback corto si el navegador
-// no soporta Intl.supportedValuesOf).
-const MONEDAS = (typeof Intl.supportedValuesOf === "function")
-  ? Intl.supportedValuesOf("currency")
-  : ["MXN", "USD", "EUR", "GBP", "CAD", "JPY", "CNY", "ARS", "COP", "PEN", "CLP", "BRL", "AUD", "CHF"];
+// Monedas que la app sabe manejar (deliberadamente pocas — un select con
+// ~180 códigos ISO 4217 era ruido para un viaje típico). MXN es siempre la
+// moneda base del reporte consolidado (viajes/{tripId}/monedas, ver abajo).
+const MONEDAS_SOPORTADAS = ["MXN", "USD", "EUR", "JPY", "CAD"];
+const NOMBRE_MONEDA = {
+  MXN: "Peso mexicano",
+  USD: "Dólar estadounidense",
+  EUR: "Euro",
+  JPY: "Yen japonés",
+  CAD: "Dólar canadiense"
+};
 
-function opcionesMoneda(seleccionada) {
+// ¿Esta moneda está activa para el viaje? MXN siempre lo está (es la base
+// del reporte consolidado); las demás lo están salvo que el admin las haya
+// desactivado explícitamente — así un viaje que nunca tocó /monedas se
+// sigue viendo con las 5 disponibles, en vez de con ninguna.
+function monedaEstaActiva(monedasCache, codigo) {
+  if (codigo === "MXN") return true;
+  const entrada = monedasCache && monedasCache[codigo];
+  return !entrada || entrada.activa !== false;
+}
+function monedasActivasDe(monedasCache) {
+  return MONEDAS_SOPORTADAS.filter(m => monedaEstaActiva(monedasCache, m));
+}
+
+// activas: subconjunto de MONEDAS_SOPORTADAS a ofrecer (ver monedasActivasDe).
+// Si el valor ya guardado quedó desactivado después, se conserva como opción
+// extra al editar — no se pierde el dato ni obliga a cambiarlo a fuerzas.
+function opcionesMoneda(seleccionada, activas) {
   const valor = seleccionada || "MXN";
-  const lista = MONEDAS.includes(valor) ? MONEDAS : [valor, ...MONEDAS];
-  return lista.map(m => `<option value="${esc(m)}"${m === valor ? " selected" : ""}>${esc(m)}</option>`).join("");
+  const base = (activas && activas.length ? activas : MONEDAS_SOPORTADAS).slice();
+  const lista = base.includes(valor) ? base : [valor, ...base];
+  return lista.map(m =>
+    `<option value="${esc(m)}"${m === valor ? " selected" : ""}>${esc(m)}${NOMBRE_MONEDA[m] ? ` — ${esc(NOMBRE_MONEDA[m])}` : ""}</option>`
+  ).join("");
 }
 
 // Campos de costo compartidos por los formularios de Traslados, Hospedajes
@@ -212,7 +236,9 @@ function opcionesMoneda(seleccionada) {
 // evita colisión de ids entre los tres formularios (ej. "ft", "fh", "fl").
 // defaultTipoNuevo es el valor sugerido solo para una captura nueva (p.ej.
 // "porPersona" tiene más sentido para un lugar/actividad que para un vuelo).
-function camposCosto(idPrefix, existente, defaultTipoNuevo) {
+// monedasActivas viene de monedasActivasDe() — las que el admin dejó
+// prendidas para este viaje (ver pestaña Info).
+function camposCosto(idPrefix, existente, defaultTipoNuevo, monedasActivas) {
   const costo = existente && existente.costo != null ? existente.costo : "";
   const costoTipo = (existente && existente.costoTipo) || defaultTipoNuevo || "total";
   const moneda = (existente && existente.moneda) || "MXN";
@@ -225,7 +251,7 @@ function camposCosto(idPrefix, existente, defaultTipoNuevo) {
       <option value="porPersona"${costoTipo === "porPersona" ? " selected" : ""}>Por persona</option>
     </select>
     <label for="${idPrefix}-moneda">Moneda</label>
-    <select id="${idPrefix}-moneda">${opcionesMoneda(moneda)}</select>
+    <select id="${idPrefix}-moneda">${opcionesMoneda(moneda, monedasActivas)}</select>
   `;
 }
 

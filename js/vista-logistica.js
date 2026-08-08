@@ -25,11 +25,13 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
   const refCiudades = refNodo(tripId, "ciudades");
   const refTraslados = refNodo(tripId, "traslados");
   const refHospedajes = refNodo(tripId, "hospedajes");
+  const refMonedas = refNodo(tripId, "monedas");
 
   let infoCache = {};
   let ciudadesCache = {};
   let trasladosCache = {};
   let hospedajesCache = {};
+  let monedasCache = {};
 
   // Atributos min/max para <input type="date"> — mantiene la captura dentro del
   // rango de fechas del viaje si ya está definido.
@@ -169,7 +171,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <input id="ft-hora-llegada" type="time" value="${esc(valFinHora)}" required>
         <label for="ft-confirmacion">Clave/número de confirmación</label>
         <input id="ft-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.confirmacion || "") : "")}">
-        ${camposCosto("ft", existente)}
+        ${camposCosto("ft", existente, null, monedasActivasDe(monedasCache))}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="ft-cancelar">Cancelar</button>
@@ -260,7 +262,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
         <input id="fh-noches" type="number" min="1" step="1" value="${esc(existente ? (existente.noches || 1) : 1)}" required>
         <label for="fh-confirmacion">Clave/número de reservación</label>
         <input id="fh-confirmacion" type="text" placeholder="Opcional" value="${esc(existente ? (existente.claveReservacion || "") : "")}">
-        ${camposCosto("fh", existente)}
+        ${camposCosto("fh", existente, null, monedasActivasDe(monedasCache))}
         <div class="fila-botones">
           <button type="submit">${existente ? "Guardar cambios" : "Agregar"}</button>
           <button type="button" class="secundario" id="fh-cancelar">Cancelar</button>
@@ -315,6 +317,7 @@ async function montarVistaLogistica(contenedor, tripId, sesion) {
   const cancelarCiudades = escuchar(refCiudades, v => { ciudadesCache = v; renderTraslados(); renderHospedajes(); });
   const cancelarTraslados = escuchar(refTraslados, v => { trasladosCache = v; renderTraslados(); });
   const cancelarHospedajes = escuchar(refHospedajes, v => { hospedajesCache = v; renderHospedajes(); });
+  const cancelarMonedas = escuchar(refMonedas, v => { monedasCache = v; });
 
-  return () => { cancelarInfo(); cancelarCiudades(); cancelarTraslados(); cancelarHospedajes(); };
+  return () => { cancelarInfo(); cancelarCiudades(); cancelarTraslados(); cancelarHospedajes(); cancelarMonedas(); };
 }

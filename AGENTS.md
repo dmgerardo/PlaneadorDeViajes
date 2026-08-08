@@ -102,15 +102,17 @@ viajes/{tripId}:
   // uno de MONEDAS_SOPORTADAS ("MXN","USD","EUR","JPY","CAD" — render-utils.js).
   // Compartido entre los tres formularios vía camposCosto()/leerCamposCosto()
   // (render-utils.js) — no dupliques esos campos a mano en una vista nueva.
-  monedas/{codigoISO}: { activa, tipoCambioMXN }
-  // Config del admin por viaje (vista-info.js, tarjeta "Monedas del viaje"):
-  // qué monedas de MONEDAS_SOPORTADAS se ofrecen al capturar un costo, y su
-  // tipo de cambio fijo a MXN. MXN es siempre activa y su tasa es 1 (no vive
-  // en este nodo). Si el nodo no existe o falta una moneda, se trata como
-  // activa por default (monedaEstaActiva() en render-utils.js) — así un viaje
-  // que nunca tocó esta pestaña sigue ofreciendo las 5. El reporte de costos
-  // (pestaña Info, vista-info.js: calcularReporteCostos) agrupa por moneda
-  // (multiplicando los "porPersona" por el número de participantes) y además
+  monedas/{codigoISO}: { tipoCambioMXN }
+  // Monedas que el admin agregó a este viaje (vista-info.js, tarjeta
+  // "Monedas del viaje") — mismo patrón que la pestaña Ciudades: se
+  // agregan/editan/quitan una por una (botón "+" + clic en la fila para
+  // editar), NO es una lista fija con checkboxes de activar/desactivar. MXN
+  // es la moneda base: siempre disponible, nunca vive en este nodo, no
+  // tiene tipoCambioMXN propio (es implícitamente 1). Un viaje que nunca
+  // tocó esa tarjeta solo ofrece MXN — ver monedasActivasDe() en
+  // render-utils.js. El reporte de costos (pestaña Info, vista-info.js:
+  // calcularReporteCostos) agrupa por moneda (multiplicando los
+  // "porPersona" por el número de participantes) y además
   // arma un total consolidado en MXN usando tipoCambioMXN — las monedas sin
   // tasa capturada quedan fuera de ese consolidado, no se inventa un valor.
   checklist/{itemId}: { nombre, porPersona: { userId: bool }, orden, categoria }

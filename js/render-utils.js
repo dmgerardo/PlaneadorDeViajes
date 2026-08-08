@@ -205,17 +205,13 @@ const NOMBRE_MONEDA = {
   CAD: "Dólar canadiense"
 };
 
-// ¿Esta moneda está activa para el viaje? MXN siempre lo está (es la base
-// del reporte consolidado); las demás lo están salvo que el admin las haya
-// desactivado explícitamente — así un viaje que nunca tocó /monedas se
-// sigue viendo con las 5 disponibles, en vez de con ninguna.
-function monedaEstaActiva(monedasCache, codigo) {
-  if (codigo === "MXN") return true;
-  const entrada = monedasCache && monedasCache[codigo];
-  return !entrada || entrada.activa !== false;
-}
+// Monedas disponibles para capturar un costo en este viaje: MXN (siempre,
+// es la base) + las que el admin agregó explícitamente a viajes/{tripId}/
+// monedas (ver la tarjeta "Monedas del viaje" en vista-info.js — funciona
+// como la de Ciudades: se agregan/quitan una por una, no es un catálogo
+// fijo). Un viaje que nunca tocó esa tarjeta solo ofrece MXN.
 function monedasActivasDe(monedasCache) {
-  return MONEDAS_SOPORTADAS.filter(m => monedaEstaActiva(monedasCache, m));
+  return MONEDAS_SOPORTADAS.filter(m => m === "MXN" || Boolean(monedasCache && monedasCache[m]));
 }
 
 // activas: subconjunto de MONEDAS_SOPORTADAS a ofrecer (ver monedasActivasDe).

@@ -37,52 +37,97 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
   const progreso = { ciudades: {}, ciudadPorDia: {}, lugares: {} };
   const costos = { traslados: {}, hospedajes: {}, lugares: {} };
 
-  // Tarjeta "Monedas del viaje": el admin activa/desactiva cuáles de las
-  // MONEDAS_SOPORTADAS se ofrecen al capturar un costo, y fija un tipo de
-  // cambio a MXN por moneda para el total consolidado de abajo. Cada
-  // checkbox/input guarda solo. Visible para todos (todos capturan costos y
-  // necesitan saber qué moneda usar), pero solo editable si es admin.
+  // Tarjeta "Monedas del viaje": mismo patrón que la pestaña Ciudades — el
+  // admin agrega/quita monedas de este viaje una por una (botón "+" y clic
+  // en la fila para editar/eliminar), en vez de una lista fija con
+  // checkboxes. MXN es la fila base: siempre está, no se agrega ni se
+  // quita, no tiene tipo de cambio propio (ES la moneda del consolidado).
+  // Visible para todos (todos capturan costos y necesitan ver qué monedas
+  // hay disponibles), pero solo el admin ve el botón "+" y puede tocar una
+  // fila para editarla.
   const renderMonedas = programarRender(() => {
     const el = document.getElementById("in-monedas");
     if (!el) return;
     el.innerHTML = `
-      <h3>Monedas del viaje</h3>
-      <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
-        Estas son las monedas disponibles al capturar un costo. Fija un tipo de cambio a MXN
-        en cada una para ver el total consolidado.
-      </p>
+      <div class="encabezado-seccion">
+        <h3>Monedas del viaje</h3>
+        ${esAdminActual ? `<button type="button" class="btn-agregar-circular" id="in-btn-moneda" aria-label="Agregar moneda" title="Agregar moneda">${icono("plus", 20)}</button>` : ""}
+      </div>
       <div id="in-monedas-lista"></div>
     `;
     const lista = document.getElementById("in-monedas-lista");
-    MONEDAS_SOPORTADAS.forEach(codigo => {
-      const entrada = monedasCache[codigo] || {};
-      const esBase = codigo === "MXN";
-      const activa = monedaEstaActiva(monedasCache, codigo);
+
+    const filaBase = document.createElement("div");
+    filaBase.className = "lista-item";
+    filaBase.innerHTML = `
+      <div><strong>MXN</strong> <span style="color:var(--color-texto-suave);font-size:12px;">— ${esc(NOMBRE_MONEDA.MXN)}</span></div>
+      <span style="font-size:12px;color:var(--color-texto-suave)">Moneda base</span>
+    `;
+    lista.appendChild(filaBase);
+
+    Object.keys(monedasCache).sort().forEach(codigo => {
+      if (!NOMBRE_MONEDA[codigo]) return; // ignora datos viejos si algún día se retira una moneda soportada
+      const entrada = monedasCache[codigo];
       const fila = document.createElement("div");
-      fila.className = "lista-item";
-      fila.style.alignItems = "center";
+      fila.className = "lista-item" + (esAdminActual ? " lista-item-clic" : "");
       fila.innerHTML = `
-        <label style="display:flex;align-items:center;gap:8px;flex:1;">
-          <input type="checkbox" data-moneda-activa="${esc(codigo)}" ${activa ? "checked" : ""} ${esBase || !esAdminActual ? "disabled" : ""}>
-          ${esc(codigo)} <span style="color:var(--color-texto-suave);font-size:12px;">— ${esc(NOMBRE_MONEDA[codigo])}</span>
-        </label>
-        ${esBase
-          ? `<span style="font-size:12px;color:var(--color-texto-suave)">Moneda base</span>`
-          : `<input type="number" min="0" step="0.0001" data-tipo-cambio="${esc(codigo)}" placeholder="1 ${esc(codigo)} = ? MXN"
-               value="${entrada.tipoCambioMXN != null ? esc(entrada.tipoCambioMXN) : ""}" style="width:150px;" ${esAdminActual ? "" : "disabled"}>`}
+        <div><strong>${esc(codigo)}</strong> <span style="color:var(--color-texto-suave);font-size:12px;">— ${esc(NOMBRE_MONEDA[codigo])}</span></div>
+        <span style="font-size:12px;color:var(--color-texto-suave)">
+          ${entrada.tipoCambioMXN != null ? `1 ${esc(codigo)} = ${esc(entrada.tipoCambioMXN)} MXN` : "Sin tipo de cambio"}
+        </span>
+        ${esAdminActual ? `<span class="lista-item-chevron">${icono("chevron-right", 18)}</span>` : ""}
       `;
-      if (esAdminActual && !esBase) {
-        fila.querySelector("[data-moneda-activa]").addEventListener("change", e => {
-          actualizar(refMonedas.child(codigo), { activa: e.target.checked });
-        });
-        fila.querySelector("[data-tipo-cambio]").addEventListener("change", e => {
-          const valor = e.target.value === "" ? null : Number(e.target.value);
-          actualizar(refMonedas.child(codigo), { tipoCambioMXN: Number.isFinite(valor) ? valor : null });
-        });
-      }
+      if (esAdminActual) fila.addEventListener("click", () => abrirFormularioMoneda(codigo));
       lista.appendChild(fila);
     });
+
+    if (esAdminActual) {
+      document.getElementById("in-btn-moneda").addEventListener("click", () => {
+        const disponibles = MONEDAS_SOPORTADAS.filter(m => m !== "MXN" && !monedasCache[m]);
+        if (disponibles.length === 0) { alert("Ya agregaste las monedas disponibles."); return; }
+        abrirFormularioMoneda(null);
+      });
+    }
   });
+
+  function abrirFormularioMoneda(codigoExistente) {
+    const existente = codigoExistente ? monedasCache[codigoExistente] : null;
+    const disponibles = MONEDAS_SOPORTADAS.filter(m => m !== "MXN" && (m === codigoExistente || !monedasCache[m]));
+    const { modal, cerrar } = abrirModal(`
+      <h3>${codigoExistente ? "Editar moneda" : "Agregar moneda"}</h3>
+      <form id="form-moneda">
+        <label for="mo-codigo">Moneda</label>
+        <select id="mo-codigo" required ${codigoExistente ? "disabled" : ""}>
+          ${disponibles.map(m => `<option value="${esc(m)}"${m === codigoExistente ? " selected" : ""}>${esc(m)} — ${esc(NOMBRE_MONEDA[m])}</option>`).join("")}
+        </select>
+        <label for="mo-tipo-cambio">Tipo de cambio a MXN</label>
+        <input id="mo-tipo-cambio" type="number" min="0" step="0.0001" placeholder="1 ${esc(codigoExistente || "X")} = ? MXN" required autofocus
+          value="${existente && existente.tipoCambioMXN != null ? esc(existente.tipoCambioMXN) : ""}">
+        <div class="fila-botones">
+          <button type="submit">${codigoExistente ? "Guardar cambios" : "Agregar"}</button>
+          <button type="button" class="secundario" id="mo-cancelar">Cancelar</button>
+          ${codigoExistente ? `<button type="button" class="peligro" id="mo-eliminar">Eliminar</button>` : ""}
+        </div>
+      </form>
+    `);
+    modal.querySelector("#mo-cancelar").addEventListener("click", cerrar);
+    if (codigoExistente) {
+      modal.querySelector("#mo-eliminar").addEventListener("click", async () => {
+        if (confirm(`¿Quitar ${codigoExistente} de las monedas de este viaje?`)) {
+          await eliminar(refMonedas.child(codigoExistente));
+          cerrar();
+        }
+      });
+    }
+    modal.querySelector("#form-moneda").addEventListener("submit", async e => {
+      e.preventDefault();
+      const codigo = codigoExistente || modal.querySelector("#mo-codigo").value;
+      const tipoCambioMXN = Number(modal.querySelector("#mo-tipo-cambio").value);
+      if (!codigo || !Number.isFinite(tipoCambioMXN) || tipoCambioMXN <= 0) return;
+      await actualizar(refMonedas.child(codigo), { tipoCambioMXN });
+      cerrar();
+    });
+  }
 
   // Suma, por moneda, lo capturado en Traslados/Hospedajes/Lugares — un
   // costo "por persona" se multiplica por el número de participantes para

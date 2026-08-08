@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=36"></script>
+<script src="js/tema.js?v=37"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=36">
+<link rel="stylesheet" href="css/estilos.css?v=37">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v37 — Monedas del viaje: agregar/quitar en vez de activar/desactivar</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li>La tarjeta "Monedas del viaje" (Info) se rediseñó al mismo patrón que Ciudades: el admin agrega una moneda con el botón "+" (eligiendo cuál y su tipo de cambio a MXN) y toca la fila para editarla o quitarla — ya no es una lista fija de 5 con casillas de activar/desactivar. MXN, al ser la moneda base, no se puede quitar.</li>
+        <li><strong>Corregido:</strong> los controles de esa tarjeta a veces aparecían en modo solo lectura aunque quien los veía sí fuera admin del viaje.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v36 — Monedas activas por viaje y reporte consolidado en MXN</h3>
@@ -356,7 +365,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=36"></script>
-  <script src="js/version.js?v=36"></script>
+  <script src="js/app-version.js?v=37"></script>
+  <script src="js/version.js?v=37"></script>
 </body>
 </html>

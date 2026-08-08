@@ -190,16 +190,19 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   let lugarSeleccionado = null;
   let scrollInicialHecho = false;
   let diaAgendaActual = null;
-  // Zona horaria fija en la que se dibuja el sombreado de noche, elegida a
-  // mano por la persona usuaria — null significa "hora local de la ciudad
-  // de cada día" (default). Cada columna sigue siendo un día real en la
-  // ciudad que le corresponde (eso no cambia); lo único que cambia es en
-  // qué reloj se expresa el amanecer/atardecer de esa ciudad, para poder
-  // comparar de un vistazo varios días sin tener que hacer la conversión
-  // mental columna por columna. Deliberadamente NO afecta la posición de
-  // los bloques (lugares/traslados/hospedajes) ni el clic para agendar —
-  // esos siguen usando la hora real de cada ciudad, para no arriesgar que
-  // arrastrar un bloque lo guarde en una hora distinta a la que se ve.
+  // Zona horaria fija en la que se dibuja TODO (sombreado de noche, posición
+  // de bloques, clic para agendar, arrastre/redimensión), elegida a mano por
+  // la persona usuaria — null significa "hora local de la ciudad de cada
+  // día" (default). Cada columna sigue siendo un día real en la ciudad que
+  // le corresponde (eso no cambia — a qué columna pertenece un traslado,
+  // hospedaje o lugar se sigue decidiendo con la zona REAL de esa ciudad,
+  // igual que antes de v43); lo único que cambia con este selector es en
+  // qué reloj se expresa la posición vertical DENTRO de esa columna. Es
+  // clave que el eje de posición y el eje de guardado (arrastre/clic) usen
+  // siempre la MISMA zona (ver zonaPosicion más abajo) — si se dibujara con
+  // una zona y se decodificara el pixel con otra, arrastrar un bloque lo
+  // guardaría en una hora distinta a la que se ve, el mismo tipo de bug de
+  // v41/v42 pero en el eje de arrastre en vez del de "a qué día pertenece".
   const claveZonaVista = `planeador_zonaVistaNoche::${tripId}`;
   let zonaVistaNoche = localStorage.getItem(claveZonaVista) || null;
   // Ciudad del día que se está viendo en Agenda — se recalcula en cada
@@ -324,6 +327,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
 
     dias.forEach(dia => {
       const infoDia = ciudadPorDia[dia] || { etiqueta: "—", zonaHoraria: estado.info.zonaOrigen };
+      // Zona en la que se dibuja/decodifica TODO dentro de esta columna: la
+      // posición de los bloques, el sombreado de noche, el clic para agendar
+      // y el arrastre/redimensión (ver habilitarArrastre/habilitarRedimension
+      // más abajo, que reciben esta misma zona). El amanecer/atardecer real
+      // sigue siendo el de la ciudad del día (ciudadDelDia, por sus
+      // coordenadas) — zonaPosicion solo cambia en qué reloj se expresa.
+      const zonaPosicion = zonaVistaNoche || infoDia.zonaHoraria;
       const col = document.createElement("div");
       col.className = modoAgenda ? "cal-dia cal-dia-agenda" : "cal-dia";
       col.innerHTML = `
@@ -332,14 +342,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           <span class="fecha">${esc(new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", timeZone: "UTC" }))}</span>
           <span class="ciudad">${esc(infoDia.etiqueta)}</span>
         </div>`}
-        <div class="cal-area" style="height:${24 * HORA_PX}px;" data-dia="${esc(dia)}" data-tz="${esc(infoDia.zonaHoraria)}"></div>
+        <div class="cal-area" style="height:${24 * HORA_PX}px;" data-dia="${esc(dia)}" data-tz="${esc(zonaPosicion)}"></div>
       `;
       const area = col.querySelector(".cal-area");
       const ciudadDelDia = infoDia.ciudadId ? estado.ciudades[infoDia.ciudadId] : null;
-      // El amanecer/atardecer real sigue siendo el de la ciudad del día
-      // (ciudadDelDia, por sus coordenadas) — zonaVistaNoche solo cambia en
-      // qué reloj se expresan esas horas para dibujar la franja.
-      area.style.backgroundImage = fondoConNoche(calcularFranjaNoche(dia, ciudadDelDia, zonaVistaNoche || infoDia.zonaHoraria));
+      area.style.backgroundImage = fondoConNoche(calcularFranjaNoche(dia, ciudadDelDia, zonaPosicion));
 
       area.addEventListener("click", async e => {
         if (e.target !== area) return;
@@ -353,11 +360,11 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         }
         const rect = area.getBoundingClientRect();
         const horaClick = Math.max(0, Math.min(23, Math.floor((e.clientY - rect.top) / HORA_PX)));
-        if (hayTraslape(dia, null, horaClick, horaClick + 1, infoDia.zonaHoraria)) {
+        if (hayTraslape(dia, null, horaClick, horaClick + 1, zonaPosicion)) {
           alert("Ya hay algo agendado en ese horario. Elige otra hora.");
           return;
         }
-        const inicioISO = localAUTC(dia, `${String(horaClick).padStart(2, "0")}:00`, infoDia.zonaHoraria);
+        const inicioISO = localAUTC(dia, `${String(horaClick).padStart(2, "0")}:00`, zonaPosicion);
         const finISO = new Date(new Date(inicioISO).getTime() + 3600000).toISOString();
         await agregar(refItinerario, {
           tipo: "lugar", refId: lugarSeleccionado, ciudadId: lugar.ciudadId,
@@ -367,10 +374,17 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         renderPendientes();
       });
 
-      // Bloques de itinerario (lugares) para este día, según su hora local.
+      // Bloques de itinerario (lugares) para este día: a qué columna
+      // pertenece se sigue decidiendo con la hora local REAL de la ciudad
+      // del día (infoDia.zonaHoraria — un lugar agendado solo puede caer en
+      // un día cuya ciudad coincida con la suya, ver el checkeo de
+      // infoDia.ciudadId al agendar más abajo, así que esto siempre ES la
+      // zona real del lugar). Se dibuja en zonaPosicion, con fallback a esa
+      // misma zona real si la de vista lo dejaría fuera de `dia` por
+      // completo (ver pintarBloqueLugar).
       Object.entries(estado.itinerario)
         .filter(([, b]) => fechaISO(b.inicioUTC, infoDia.zonaHoraria) === dia)
-        .forEach(([id, b]) => pintarBloqueLugar(area, id, b, infoDia.zonaHoraria, ciudadPorDia));
+        .forEach(([id, b]) => pintarBloqueLugar(area, id, b, zonaPosicion, dia, ciudadPorDia, infoDia.zonaHoraria));
 
       // Traslados que tocan este día: el día de salida (hora local del
       // ORIGEN) o el de llegada (hora local del DESTINO) — nunca la zona de
@@ -379,6 +393,13 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       // "colarse" en el día equivocado solo porque, al convertir su
       // inicio/fin a una zona horaria muy distinta (p.ej. Tokio, +9h), la
       // aritmética cruzaba por casualidad la medianoche de esa zona ajena.
+      // Esto sigue siendo cierto con una zona de vista activa: si en vez de
+      // la zona propia del traslado se usara la de vista para decidir A QUÉ
+      // DÍA pertenece, un traslado sin relación con esa ciudad podría volver
+      // a "colarse" — así que el día sigue decidiéndose SIEMPRE con la zona
+      // real; solo el DIBUJO (pintarBloqueFijo) usa zonaPosicion, con
+      // fallback a la zona real de ese tramo si la de vista dejaría el
+      // bloque fuera de `dia` por completo.
       // Un traslado largo (vuelo internacional de +10h) sí puede tocar dos
       // días DE VERDAD (el de salida y el de llegada) — se dibuja un
       // segmento recortado en cada uno (ver pintarBloqueFijo). Usa su
@@ -395,21 +416,27 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
           const fin = t.finUTC || new Date(new Date(t.inicioUTC).getTime() + 3600000).toISOString();
           const duracion = t.finUTC ? ` (${formatoDuracion(new Date(t.finUTC) - new Date(t.inicioUTC))})` : "";
           const viaEscalas = (t.escalas || []).map(e => ` → ${e}`).join("");
-          pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, infoDia.zonaHoraria, "--color-traslado", dia);
+          // Fallback: la zona real del tramo (salida u origen) que hace que
+          // `dia` corresponda de verdad, para que pintarBloqueFijo pueda
+          // caer ahí si la zona de vista deja el bloque fuera de este día.
+          const diaSalidaReal = fechaISO(t.inicioUTC, zonaDeNombreCiudad(t.origen));
+          const zonaFallback = dia === diaSalidaReal ? zonaDeNombreCiudad(t.origen) : zonaDeNombreCiudad(t.destino);
+          pintarBloqueFijo(area, "plane", `${t.tipo}: ${t.origen}${viaEscalas} → ${t.destino}${duracion}`, t.inicioUTC, fin, zonaPosicion, "--color-traslado", dia, zonaFallback);
         });
 
       // Hospedajes: un bloque el día de check-in y otro el día de check-out,
       // según la zona de la CIUDAD del hospedaje (no la de la columna —
-      // mismo motivo que en traslados de arriba).
+      // mismo motivo que en traslados de arriba). Se dibuja en zonaPosicion
+      // con el mismo fallback si la de vista dejaría el bloque fuera del día.
       Object.entries(estado.hospedajes)
         .filter(([, h]) => h.checkinUTC && fechaISO(h.checkinUTC, zonaDeNombreCiudad(h.ciudad)) === dia)
         .forEach(([id, h]) => {
           const noches = h.noches ? ` (${h.noches} noche${h.noches > 1 ? "s" : ""})` : "";
-          pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia);
+          pintarBloqueFijo(area, "hotel", `Check-in: ${h.nombre}${noches}`, h.checkinUTC, new Date(new Date(h.checkinUTC).getTime() + 3600000).toISOString(), zonaPosicion, "--color-hospedaje", dia, zonaDeNombreCiudad(h.ciudad));
         });
       Object.entries(estado.hospedajes)
         .filter(([, h]) => h.checkoutUTC && fechaISO(h.checkoutUTC, zonaDeNombreCiudad(h.ciudad)) === dia)
-        .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), infoDia.zonaHoraria, "--color-hospedaje", dia));
+        .forEach(([id, h]) => pintarBloqueFijo(area, "hotel", `Check-out: ${h.nombre}`, h.checkoutUTC, new Date(new Date(h.checkoutUTC).getTime() + 3600000).toISOString(), zonaPosicion, "--color-hospedaje", dia, zonaDeNombreCiudad(h.ciudad)));
 
       grid.appendChild(col);
     });
@@ -429,54 +456,82 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     }
   }
 
-  // dia: fecha local (AAAA-MM-DD, en zonaHoraria) de la columna donde se está
-  // pintando este bloque — necesaria para recortarlo correctamente cuando
-  // inicioUTC/finUTC no caen ambos ese mismo día (traslados largos, p.ej. un
-  // vuelo internacional de +10h: sale un día y llega al siguiente). Si el
-  // bloque empezó un día anterior a `dia`, se recorta a partir de 00:00; si
-  // termina un día después, se recorta hasta 24:00 — así el traslado se ve
-  // completo repartido en tantas columnas como días toque, en vez de
-  // desaparecer después del primer día o "envolverse" mal a las 00:00.
-  function pintarBloqueFijo(area, iconoTipo, texto, inicioUTC, finUTC, zonaHoraria, colorVar, dia) {
-    const diaInicio = fechaISO(inicioUTC, zonaHoraria);
-    const diaFin = fechaISO(finUTC, zonaHoraria);
-    const inicio = diaInicio === dia ? horaLocalDecimal(inicioUTC, zonaHoraria) : 0;
-    let fin = diaFin === dia ? horaLocalDecimal(finUTC, zonaHoraria) : 24;
+  // Calcula la posición vertical (hora decimal 0-24) de un bloque dentro de
+  // la columna `dia`, y en qué zona horaria quedó expresada esa posición.
+  // Intenta zonaHoraria (típicamente zonaPosicion: la de vista si está
+  // activa, si no la real de la columna); si el bloque queda COMPLETAMENTE
+  // fuera de `dia` en esa zona (ni el inicio ni el fin caen ese día — puede
+  // pasar con una zona de vista muy alejada de la real, p.ej. ver un
+  // traslado a Tokio en hora de México), en vez de dibujar un bloque de 24h
+  // engañoso o dejarlo sin dibujar, se cae a zonaFallback (la zona real que
+  // sí hace que `dia` sea correcto). Quien llama debe usar la zona
+  // devuelta (no la zonaHoraria pedida) para todo lo demás que dependa de
+  // "dónde quedó dibujado" — texto y, sobre todo, arrastre/redimensión: si
+  // se dibuja con una zona y se decodifica el pixel con otra, arrastrar el
+  // bloque lo guardaría en una hora distinta a la que se ve.
+  function calcularPosicionBloque(inicioUTC, finUTC, zonaHoraria, dia, zonaFallback) {
+    let zona = zonaHoraria;
+    let diaInicio = fechaISO(inicioUTC, zona);
+    let diaFin = fechaISO(finUTC, zona);
+    if (diaInicio !== dia && diaFin !== dia && zonaFallback && zonaFallback !== zona) {
+      zona = zonaFallback;
+      diaInicio = fechaISO(inicioUTC, zona);
+      diaFin = fechaISO(finUTC, zona);
+    }
+    const inicio = diaInicio === dia ? horaLocalDecimal(inicioUTC, zona) : 0;
+    let fin = diaFin === dia ? horaLocalDecimal(finUTC, zona) : 24;
     if (fin <= inicio) fin = 24;
+    return { inicio, fin, zona, diaInicio };
+  }
+
+  // dia: fecha local (AAAA-MM-DD) de la columna donde se está pintando este
+  // bloque. zonaFallback: zona real a la que caer si zonaHoraria (de
+  // posición) deja el bloque fuera de `dia` por completo — ver
+  // calcularPosicionBloque.
+  function pintarBloqueFijo(area, iconoTipo, texto, inicioUTC, finUTC, zonaHoraria, colorVar, dia, zonaFallback) {
+    const { inicio, fin, zona, diaInicio } = calcularPosicionBloque(inicioUTC, finUTC, zonaHoraria, dia, zonaFallback);
     const div = document.createElement("div");
     div.className = "cal-bloque fijado";
     div.style.top = `${inicio * HORA_PX}px`;
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorCss(colorVar);
     const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
+    const etiquetaZona = zonaVistaNoche && zona === zonaHoraria ? "vista" : "local";
     // La hora de origen solo tiene sentido en el día real de salida — en los
     // días siguientes (si el traslado sigue en curso) confundiría más que ayudar.
-    const horaOrigenTxt = (zonaOrigen !== zonaHoraria && diaInicio === dia)
-      ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(inicioUTC, zonaHoraria)} local · ${formatoHora(inicioUTC, zonaOrigen)} origen</div>`
+    const horaOrigenTxt = (zonaOrigen !== zona && diaInicio === dia)
+      ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(inicioUTC, zona)} ${etiquetaZona} · ${formatoHora(inicioUTC, zonaOrigen)} origen</div>`
       : "";
     div.innerHTML = `<div class="titulo">${icono("lock", 12)}${icono(iconoTipo, 12)} ${esc(texto)}</div>${horaOrigenTxt}`;
     area.appendChild(div);
   }
 
-  function pintarBloqueLugar(area, id, bloque, zonaHoraria, ciudadPorDia) {
+  // zonaHoraria: zona de posición de esta columna (zonaPosicion). dia: día
+  // de la columna. zonaFallback: zona real del lugar (infoDia.zonaHoraria),
+  // a la que se cae si zonaHoraria deja el bloque fuera de `dia` — ver
+  // calcularPosicionBloque. Crucial: la zona EFECTIVA que resulte (zona,
+  // pudiendo ser el fallback) es la que se pasa a habilitarArrastre/
+  // habilitarRedimension, para que el eje de arrastre siempre coincida con
+  // el eje en el que se dibujó, incluso en el caso de fallback.
+  function pintarBloqueLugar(area, id, bloque, zonaHoraria, dia, ciudadPorDia, zonaFallback) {
     const lugar = estado.lugares[bloque.refId];
     if (!lugar) return;
-    const inicio = horaLocalDecimal(bloque.inicioUTC, zonaHoraria);
-    const fin = horaLocalDecimal(bloque.finUTC, zonaHoraria);
+    const { inicio, fin, zona } = calcularPosicionBloque(bloque.inicioUTC, bloque.finUTC, zonaHoraria, dia, zonaFallback);
     const div = document.createElement("div");
     div.className = `cal-bloque cat-${lugar.categoria}${bloque.fijado ? " fijado" : ""}`;
     div.style.top = `${inicio * HORA_PX}px`;
     div.style.height = `${Math.max(fin - inicio, 0.5) * HORA_PX}px`;
     div.style.background = colorParaCiudad(lugar.ciudadId);
     const zonaOrigen = estado.info.zonaOrigen || "America/Mexico_City";
-    const horaOrigenTxt = zonaOrigen !== zonaHoraria
+    const etiquetaZona = zonaVistaNoche && zona === zonaHoraria ? "vista" : "local";
+    const horaOrigenTxt = zonaOrigen !== zona
       ? `<div style="font-size:9.5px;opacity:0.85;">${formatoHora(bloque.inicioUTC, zonaOrigen)}–${formatoHora(bloque.finUTC, zonaOrigen)} origen</div>`
       : "";
     div.innerHTML = `
       <span class="accion-fijar" data-accion="fijar" title="Fijar/soltar">${bloque.fijado ? icono("lock", 13) : icono("pin", 13)}</span>
       <span class="accion-quitar" data-accion="quitar" title="Quitar del calendario">${icono("x", 13)}</span>
       <div class="titulo">${lugar.aireLibre ? icono("snowflake", 12) + " " : ""}${esc(lugar.nombre)}</div>
-      <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zonaHoraria)}–${formatoHora(bloque.finUTC, zonaHoraria)} local</div>
+      <div style="font-size:10px;opacity:0.9;">${formatoHora(bloque.inicioUTC, zona)}–${formatoHora(bloque.finUTC, zona)} ${etiquetaZona}</div>
       ${horaOrigenTxt}
       ${bloque.fijado ? "" : '<div class="resize"></div>'}
     `;
@@ -491,8 +546,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     });
 
     if (!bloque.fijado) {
-      habilitarArrastre(div, area, id, bloque, zonaHoraria, ciudadPorDia);
-      habilitarRedimension(div.querySelector(".resize"), area, id, bloque, zonaHoraria);
+      habilitarArrastre(div, area, id, bloque, zona, ciudadPorDia);
+      habilitarRedimension(div.querySelector(".resize"), area, id, bloque, zona);
     }
 
     area.appendChild(div);

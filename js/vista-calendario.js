@@ -9,7 +9,24 @@
 // montarVistaAgendaCalendario (al final del archivo) las fusiona en una sola
 // pestaña con un switch Día/Cuadrícula.
 
-const HORA_PX = 44;
+// Niveles de "zoom" vertical de la cuadrícula (botones +/-, ver
+// montarVistaCalendario): [0] es el actual/default (el más amplio, "más
+// cerca"); subir de índice aleja la vista y achica los renglones. Solo 2-3
+// niveles a propósito — no es un zoom continuo, es "normal/chico/muy chico".
+// Es una preferencia global de la app (no por viaje), igual que
+// MODO_AGENDA_KEY más abajo — vive en localStorage, no en Firebase.
+const NIVELES_HORA_PX = [44, 32, 24];
+const CLAVE_ZOOM_CALENDARIO = "planeador_zoomCalendarioNivel";
+function nivelZoomGuardado() {
+  const crudo = parseInt(localStorage.getItem(CLAVE_ZOOM_CALENDARIO), 10);
+  return Number.isInteger(crudo) && crudo >= 0 && crudo < NIVELES_HORA_PX.length ? crudo : 0;
+}
+let nivelZoomCalendario = nivelZoomGuardado();
+// HORA_PX es mutable (no const) a propósito: todo el archivo la referencia
+// por clausura (posición/alto de bloques, snapping de arrastre, líneas de
+// hora vía --hora-px en CSS) — cambiarla aquí y volver a renderizar basta
+// para aplicar el zoom en todos lados sin duplicar esa lógica por vista.
+let HORA_PX = NIVELES_HORA_PX[nivelZoomCalendario];
 const COLORES_CIUDAD = ["--color-ciudad-1", "--color-ciudad-2", "--color-ciudad-3", "--color-ciudad-4", "--color-ciudad-5", "--color-ciudad-6"];
 
 function colorCss(varName) {
@@ -195,6 +212,8 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <label for="cal-zona-vista" style="margin:0;font-size:12px;">Selecciona huso horario a mostrar:</label>
         <select id="cal-zona-vista" style="flex:1;"></select>
+        <button type="button" class="texto" id="cal-zoom-menos" aria-label="Renglones más chicos" title="Renglones más chicos" style="flex:0 0 auto;padding:6px;">${icono("minus", 16)}</button>
+        <button type="button" class="texto" id="cal-zoom-mas" aria-label="Renglones más grandes" title="Renglones más grandes" style="flex:0 0 auto;padding:6px;">${icono("plus", 16)}</button>
       </div>
       <div class="cal-body">
         <div class="cal-col-horas" id="cal-col-horas"></div>
@@ -207,6 +226,7 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
         <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 6px;">
           Toca un lugar y luego toca la hora del día donde quieras colocarlo.
         </p>
+        <div class="fila-botones" id="cal-pendientes-filtros" style="margin:0 0 8px;"></div>
         <div class="cal-pendientes scroll-fade-x" id="cal-pendientes"></div>
       </div>
     </div>
@@ -250,6 +270,17 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
   // render() y renderPendientes() la usa en modo Calendario (no Agenda) para
   // decidir qué lugares pendientes ya se pueden agendar en algún día visible.
   let ciudadesConDiaCalendario = new Set();
+
+  // Orden de prioridad para "Lugares sin agendar": no negociables primero
+  // (lo que sí o sí hay que agendar), luego importantes, luego deseables.
+  // ETIQUETA_CATEGORIA_LUGAR viene de vista-lugares.js (mismo scope global
+  // de script, ya cargado para cuando esto se ejecuta en runtime).
+  const ORDEN_CATEGORIA_LUGAR = ["no_negociable", "importante", "deseable"];
+  // Filtro toggle por categoría en esa misma lista — todas activas por
+  // default (se ve exactamente lo mismo que antes hasta que la persona
+  // usuaria decide ocultar alguna). Vive en memoria (no se guarda entre
+  // sesiones), igual que lugarSeleccionado.
+  const filtroCategoriasPendientes = new Set(ORDEN_CATEGORIA_LUGAR);
 
   function colorParaCiudad(ciudadId) {
     const ids = Object.keys(estado.ciudades);
@@ -747,12 +778,48 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     });
   }
 
+  // Chips toggle (No negociable/Importante/Deseable) para filtrar qué
+  // categorías se muestran en "Lugares sin agendar" — no dependen de qué
+  // día/ciudad está activo, así que se pintan una sola vez y solo vuelven a
+  // pintarse ellas mismas al togglear (renderPendientes() sigue actualizando
+  // la lista de abajo).
+  function renderFiltrosPendientes() {
+    const el = document.getElementById("cal-pendientes-filtros");
+    if (!el) return;
+    limpiar(el);
+    ORDEN_CATEGORIA_LUGAR.forEach(cat => {
+      const activo = filtroCategoriasPendientes.has(cat);
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = `chip ${cat}${activo ? "" : " chip-inactivo"}`;
+      chip.textContent = ETIQUETA_CATEGORIA_LUGAR[cat] || cat;
+      chip.title = activo ? "Ocultar de esta lista" : "Mostrar en esta lista";
+      chip.addEventListener("click", () => {
+        if (activo) filtroCategoriasPendientes.delete(cat);
+        else filtroCategoriasPendientes.add(cat);
+        renderFiltrosPendientes();
+        renderPendientes();
+      });
+      el.appendChild(chip);
+    });
+  }
+
   function renderPendientes() {
     const el = document.getElementById("cal-pendientes");
     if (!el) return;
+    renderFiltrosPendientes();
     limpiar(el);
     const idsAgendados = new Set(Object.values(estado.itinerario).map(b => b.refId));
-    const todosPendientes = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
+    const sinAgendarSinFiltro = Object.entries(estado.lugares).filter(([id]) => !idsAgendados.has(id));
+    const todosPendientes = sinAgendarSinFiltro
+      .filter(([, l]) => filtroCategoriasPendientes.has(l.categoria))
+      // No negociables primero, luego importantes, luego deseables — dentro
+      // de cada categoría, alfabético (para que el orden no salte de un
+      // render a otro sin motivo).
+      .sort((a, b) => {
+        const porCategoria = ORDEN_CATEGORIA_LUGAR.indexOf(a[1].categoria) - ORDEN_CATEGORIA_LUGAR.indexOf(b[1].categoria);
+        return porCategoria !== 0 ? porCategoria : a[1].nombre.localeCompare(b[1].nombre);
+      });
 
     let listos, mensajeVacio, ctaRuta = false;
     if (modoAgenda) {
@@ -776,8 +843,15 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     }
 
     if (listos.length === 0) {
-      if (todosPendientes.length === 0) {
+      if (sinAgendarSinFiltro.length === 0) {
         el.innerHTML = '<p style="font-size:12px;color:var(--color-texto-suave)">Todos los lugares están agendados.</p>';
+        return;
+      }
+      if (todosPendientes.length === 0) {
+        // Hay lugares pendientes, pero ninguno de la categoría que se dejó
+        // activa en los filtros de arriba — no es lo mismo que "ya no hay
+        // nada pendiente", así que amerita su propio mensaje.
+        el.innerHTML = '<p style="font-size:12px;color:var(--color-texto-suave)">Sin lugares pendientes con los filtros de categoría activos.</p>';
         return;
       }
       // Estado vacío por falta de asignación en Ruta: botón directo a esa
@@ -817,6 +891,36 @@ async function montarVistaCalendario(contenedor, tripId, sesion, opciones = {}) 
     else localStorage.removeItem(claveZonaVista);
     solicitarRender();
   });
+
+  // Zoom vertical de la cuadrícula: preferencia global (no por viaje, ver
+  // NIVELES_HORA_PX), así que Agenda y Calendario (y cualquier otro viaje
+  // que se abra después) comparten el mismo nivel. Los botones se
+  // deshabilitan en los extremos en vez de dar la vuelta — son 2-3 niveles
+  // fijos, no un zoom continuo.
+  function actualizarBotonesZoom() {
+    const btnMas = document.getElementById("cal-zoom-mas");
+    const btnMenos = document.getElementById("cal-zoom-menos");
+    if (btnMas) btnMas.disabled = nivelZoomCalendario === 0;
+    if (btnMenos) btnMenos.disabled = nivelZoomCalendario === NIVELES_HORA_PX.length - 1;
+  }
+  function aplicarZoomCalendario() {
+    HORA_PX = NIVELES_HORA_PX[nivelZoomCalendario];
+    localStorage.setItem(CLAVE_ZOOM_CALENDARIO, String(nivelZoomCalendario));
+    document.documentElement.style.setProperty("--hora-px", `${HORA_PX}px`);
+    actualizarBotonesZoom();
+    solicitarRender();
+  }
+  document.getElementById("cal-zoom-mas").addEventListener("click", () => {
+    if (nivelZoomCalendario === 0) return;
+    nivelZoomCalendario--;
+    aplicarZoomCalendario();
+  });
+  document.getElementById("cal-zoom-menos").addEventListener("click", () => {
+    if (nivelZoomCalendario === NIVELES_HORA_PX.length - 1) return;
+    nivelZoomCalendario++;
+    aplicarZoomCalendario();
+  });
+  actualizarBotonesZoom();
 
   if (modoAgenda) {
     document.getElementById("ag-prev").addEventListener("click", () => {

@@ -55,13 +55,26 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
     const handle = tr.querySelector(".chk-handle");
     let arrastrando = false;
 
+    // preventDefault() en pointerdown es lo que de verdad evita que el
+    // navegador arranque su propio gesto (selección de texto al arrastrar
+    // con mouse, o el menú/lupa de selección al mantener presionado en
+    // móvil — eso era lo que hacía "se deshabilite" el renglón: el gesto
+    // nativo tomaba el control antes de que nuestro drag empezara). El
+    // pointer capture ya redirige los eventos siguientes al handle pase lo
+    // que pase debajo del dedo/cursor, pero sin este preventDefault() el
+    // navegador igual dispara su selección nativa desde el mousedown/
+    // touchstart original. tabla.classList "arrastrando-fila" (ver
+    // estilos.css) refuerza con user-select:none mientras dura el arrastre.
     handle.addEventListener("pointerdown", e => {
+      e.preventDefault();
       arrastrando = true;
       handle.setPointerCapture(e.pointerId);
       tr.style.opacity = "0.5";
+      tabla.classList.add("arrastrando-fila");
     });
     handle.addEventListener("pointermove", e => {
       if (!arrastrando) return;
+      e.preventDefault();
       const filas = Array.from(tabla.querySelectorAll("tr[data-id]")).filter(f => f !== tr);
       const y = e.clientY;
       let destino = null;
@@ -72,16 +85,27 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       if (destino) tabla.insertBefore(tr, destino);
       else tabla.appendChild(tr);
     });
-    handle.addEventListener("pointerup", async () => {
+    async function terminarArrastre() {
       if (!arrastrando) return;
       arrastrando = false;
       tr.style.opacity = "";
+      tabla.classList.remove("arrastrando-fila");
       const filasFinal = Array.from(tabla.querySelectorAll("tr[data-id]"));
       const mapaCompleto = {};
       filasFinal.forEach((fila, index) => {
         mapaCompleto[`viajes/${tripId}/checklist/${fila.dataset.id}/orden`] = index;
       });
       await actualizarMultiple(mapaCompleto);
+    }
+    handle.addEventListener("pointerup", terminarArrastre);
+    // Si el sistema interrumpe el gesto (p.ej. una notificación, o el
+    // navegador decide que es un gesto de otro tipo a medio camino), sin
+    // esto el renglón se quedaba a medias (opacidad 0.5, tabla bloqueada)
+    // sin ningún pointerup que lo resolviera.
+    handle.addEventListener("pointercancel", () => {
+      arrastrando = false;
+      tr.style.opacity = "";
+      tabla.classList.remove("arrastrando-fila");
     });
   }
 
@@ -115,7 +139,7 @@ async function montarVistaChecklist(contenedor, tripId, sesion) {
       tr.dataset.id = id;
       tr.style.borderTop = "1px solid var(--color-borde)";
       tr.innerHTML = `
-        <td class="chk-handle" style="padding:6px;text-align:center;cursor:grab;color:var(--color-texto-suave);touch-action:none;user-select:none;">⠿⠿</td>
+        <td class="chk-handle" style="padding:6px;text-align:center;color:var(--color-texto-suave);">⠿⠿</td>
         <td style="padding:6px;">${esc(item.nombre)}</td>
         ${personas.map(([userId]) => `
           <td style="text-align:center;padding:6px;">

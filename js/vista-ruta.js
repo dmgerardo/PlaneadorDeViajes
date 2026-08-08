@@ -52,10 +52,26 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     return encontrada ? encontrada[0] : null;
   }
 
-  // El traslado (si lo hay) que sale ese día — es lo que hace que el día
-  // quede "partido" entre dos ciudades en vez de ser una sola.
+  function zonaDeNombre(nombre) {
+    const id = ciudadIdPorNombre(nombre);
+    return id ? estado.ciudades[id].zonaHoraria : (estado.info.zonaOrigen || "America/Mexico_City");
+  }
+
+  // El traslado (si lo hay) que toca ese día — el día en que sale (hora
+  // local del origen) O el día en que llega (hora local del destino). Un
+  // vuelo largo (p.ej. 11h+ cruzando varios husos horarios) puede salir un
+  // día y llegar al siguiente: antes solo se detectaba el día de salida, y
+  // el de llegada se veía como un día "normal" sin nada que indicara que
+  // el viaje seguía en curso. Es lo que hace que el día quede "partido"
+  // entre dos ciudades en vez de ser una sola.
   function trasladoDelDia(dia) {
-    return Object.values(estado.traslados).find(t => t.inicioUTC && t.inicioUTC.slice(0, 10) === dia) || null;
+    return Object.values(estado.traslados).find(t => {
+      if (!t.inicioUTC) return false;
+      const fin = t.finUTC || t.inicioUTC;
+      const diaSalida = fechaISO(t.inicioUTC, zonaDeNombre(t.origen));
+      const diaLlegada = fechaISO(fin, zonaDeNombre(t.destino));
+      return dia === diaSalida || dia === diaLlegada;
+    }) || null;
   }
 
   function render() {
@@ -83,10 +99,18 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
         const destinoId = ciudadIdPorNombre(traslado.destino);
         const colorOrigen = origenId ? colorParaCiudad(origenId) : colorCss("--color-texto-suave");
         const colorDestino = destinoId ? colorParaCiudad(destinoId) : colorCss("--color-texto-suave");
-        const zonaOrigen = (origenId && estado.ciudades[origenId].zonaHoraria) || estado.info.zonaOrigen || "America/Mexico_City";
+        const zonaOrigen = zonaDeNombre(traslado.origen);
+        const zonaDestino = zonaDeNombre(traslado.destino);
+        const finTraslado = traslado.finUTC || traslado.inicioUTC;
+        // El día de salida y el de llegada pueden ser distintos (traslado
+        // que cruza medianoche) — el tooltip muestra la hora que aplica a
+        // ESTE día en particular, no siempre la de salida.
+        const esDiaLlegada = dia === fechaISO(finTraslado, zonaDestino) && dia !== fechaISO(traslado.inicioUTC, zonaOrigen);
         celda.style.background = `linear-gradient(to right, ${colorOrigen} 0 50%, ${colorDestino} 50% 100%)`;
         celda.style.color = "#fff2eb";
-        celda.title = `Traslado ${formatoHora(traslado.inicioUTC, zonaOrigen)}: ${traslado.origen} → ${traslado.destino}`;
+        celda.title = esDiaLlegada
+          ? `Llega ${formatoHora(finTraslado, zonaDestino)}: ${traslado.origen} → ${traslado.destino}`
+          : `Sale ${formatoHora(traslado.inicioUTC, zonaOrigen)}: ${traslado.origen} → ${traslado.destino}`;
         celda.innerHTML = `
           <span class="ct-fecha">${fechaCorta}</span>
           <span class="ct-ciudad">${icono("plane", 14, "icono-texto")}${esc(traslado.origen)} → ${esc(traslado.destino)}</span>

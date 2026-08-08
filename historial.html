@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#c67139" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1c1815" media="(prefers-color-scheme: dark)">
-<script src="js/tema.js?v=37"></script>
+<script src="js/tema.js?v=38"></script>
 <title>Historial de cambios — Planeador Familiar</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/estilos.css?v=37">
+<link rel="stylesheet" href="css/estilos.css?v=38">
 </head>
 <body>
   <div class="contenedor">
@@ -21,6 +21,15 @@
       <span class="version-badge" id="badge-version"></span>
     </div>
     <h1>Historial de cambios</h1>
+
+    <div class="tarjeta">
+      <h3>v38 — Más monedas por país y confirmación "Borrar" al eliminar un viaje</h3>
+      <p style="font-size:13px;color:var(--color-texto-suave)">2026-08-08</p>
+      <ul>
+        <li>El selector de "Agregar moneda" (Info) ahora ofrece la moneda oficial de cada país presente en el catálogo de ciudades (más de 80 en total), no solo MXN/USD/EUR/JPY/CAD.</li>
+        <li>Eliminar un viaje ahora pide escribir la palabra "Borrar" para confirmar (en vez del nombre del viaje) — mismo estilo que el "escribe X para confirmar" de otros servicios (AWS, etc.) para acciones destructivas.</li>
+      </ul>
+    </div>
 
     <div class="tarjeta">
       <h3>v37 — Monedas del viaje: agregar/quitar en vez de activar/desactivar</h3>
@@ -365,7 +374,7 @@
       </ul>
     </div>
   </div>
-  <script src="js/app-version.js?v=37"></script>
-  <script src="js/version.js?v=37"></script>
+  <script src="js/app-version.js?v=38"></script>
+  <script src="js/version.js?v=38"></script>
 </body>
 </html>

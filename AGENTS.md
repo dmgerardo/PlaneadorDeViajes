@@ -99,9 +99,11 @@ viajes/{tripId}:
   // costo/costoTipo/moneda (traslados, hospedajes, lugares): costo es opcional
   // (null si no se ha capturado — así el reporte no lo cuenta como $0).
   // costoTipo es "total" (cubre a todos los viajeros) o "porPersona"; moneda es
-  // uno de MONEDAS_SOPORTADAS ("MXN","USD","EUR","JPY","CAD" — render-utils.js).
-  // Compartido entre los tres formularios vía camposCosto()/leerCamposCosto()
-  // (render-utils.js) — no dupliques esos campos a mano en una vista nueva.
+  // uno de MONEDAS_SOPORTADAS — la unión de las monedas de todos los países del
+  // catálogo (MONEDA_POR_PAIS/NOMBRE_MONEDA en js/catalogo-ciudades.js, no en
+  // render-utils.js: necesitan el catálogo de países). Compartido entre los
+  // tres formularios vía camposCosto()/leerCamposCosto() (render-utils.js) —
+  // no dupliques esos campos a mano en una vista nueva.
   monedas/{codigoISO}: { tipoCambioMXN }
   // Monedas que el admin agregó a este viaje (vista-info.js, tarjeta
   // "Monedas del viaje") — mismo patrón que la pestaña Ciudades: se

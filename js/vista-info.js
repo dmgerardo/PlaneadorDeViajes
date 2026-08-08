@@ -432,10 +432,11 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     mostrarToast("Eliminado");
   }
 
-  // Requiere escribir el nombre exacto del viaje — a diferencia de un
-  // confirm() simple, esto es intencionalmente más estricto porque borra
-  // TODO el viaje (no solo una fila) y afecta a todos los participantes,
-  // no solo a quien lo borra.
+  // Requiere escribir la palabra "Borrar" (estilo AWS: confirmar tecleando
+  // una palabra fija, no basta un confirm() con un botón) — es
+  // intencionalmente más estricto porque borra TODO el viaje (no solo una
+  // fila) y afecta a todos los participantes, no solo a quien lo borra.
+  const PALABRA_CONFIRMACION_ELIMINAR = "Borrar";
   function abrirModalEliminarViaje(nombreViaje) {
     const { modal, cerrar } = abrirModal(`
       <h3>Eliminar viaje</h3>
@@ -445,8 +446,8 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
         No se puede deshacer.
       </p>
       <form id="form-eliminar-viaje">
-        <label for="ev-confirmar">Escribe "${esc(nombreViaje)}" para confirmar</label>
-        <input id="ev-confirmar" type="text" autocomplete="off" required autofocus>
+        <label for="ev-confirmar">Escribe "${PALABRA_CONFIRMACION_ELIMINAR}" para confirmar</label>
+        <input id="ev-confirmar" type="text" autocomplete="off" required autofocus placeholder="${PALABRA_CONFIRMACION_ELIMINAR}">
         <div class="error" id="ev-error"></div>
         <div class="fila-botones">
           <button type="submit" class="peligro">Eliminar viaje</button>
@@ -458,8 +459,8 @@ async function montarVistaInfo(contenedor, tripId, sesion) {
     modal.querySelector("#form-eliminar-viaje").addEventListener("submit", async e => {
       e.preventDefault();
       const escrito = modal.querySelector("#ev-confirmar").value.trim();
-      if (escrito !== nombreViaje) {
-        modal.querySelector("#ev-error").textContent = "El nombre no coincide.";
+      if (escrito !== PALABRA_CONFIRMACION_ELIMINAR) {
+        modal.querySelector("#ev-error").textContent = `Escribe exactamente "${PALABRA_CONFIRMACION_ELIMINAR}" para confirmar.`;
         return;
       }
       await eliminarViajeCompleto();

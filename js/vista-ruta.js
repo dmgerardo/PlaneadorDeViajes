@@ -18,6 +18,8 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
       <p style="font-size:12px;color:var(--color-texto-suave);margin:0 0 8px;">
         Toca una ciudad y luego toca cada día para asignarla (o "Quitar" para ir borrando).
         El Calendario y la Agenda usan esta asignación para saber en qué ciudad estás cada día.
+        Los días con un traslado capturado (pestaña Logística) se muestran partidos entre
+        origen y destino.
       </p>
       <div class="ruta-layout">
         <div class="ruta-ciudades" id="cal-ciudades-chips"></div>
@@ -29,8 +31,9 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
   const refInfo = refNodo(tripId, "info");
   const refCiudades = refNodo(tripId, "ciudades");
   const refCiudadPorDia = refNodo(tripId, "ciudadPorDia");
+  const refTraslados = refNodo(tripId, "traslados");
 
-  const estado = { info: {}, ciudades: {}, ciudadPorDiaManual: {} };
+  const estado = { info: {}, ciudades: {}, ciudadPorDiaManual: {}, traslados: {} };
   let ciudadSeleccionada = null;
 
   function colorParaCiudad(ciudadId) {
@@ -38,6 +41,21 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
     const idx = ids.indexOf(ciudadId);
     if (idx === -1) return colorCss("--color-primario");
     return colorCss(COLORES_CIUDAD[idx % COLORES_CIUDAD.length]);
+  }
+
+  // Nombre de ciudad (origen/destino de un traslado, texto libre) → su
+  // ciudadId en el catálogo, para poder pintarlo con su color asignado. Si
+  // no hay match (p.ej. es la ciudad de origen del viaje, que no vive en
+  // /ciudades), se pinta con un color neutro más abajo.
+  function ciudadIdPorNombre(nombre) {
+    const encontrada = Object.entries(estado.ciudades).find(([, c]) => c.nombre.toLowerCase() === (nombre || "").toLowerCase());
+    return encontrada ? encontrada[0] : null;
+  }
+
+  // El traslado (si lo hay) que sale ese día — es lo que hace que el día
+  // quede "partido" entre dos ciudades en vez de ser una sola.
+  function trasladoDelDia(dia) {
+    return Object.values(estado.traslados).find(t => t.inicioUTC && t.inicioUTC.slice(0, 10) === dia) || null;
   }
 
   function render() {
@@ -56,7 +74,24 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
       celda.className = "ct-dia";
       celda.dataset.dia = dia;
       const fechaCorta = new Date(`${dia}T00:00:00Z`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", timeZone: "UTC" }).replace(".", "");
-      if (ciudadId && estado.ciudades[ciudadId]) {
+      const traslado = trasladoDelDia(dia);
+      if (traslado) {
+        // Día partido entre dos ciudades: mitad y mitad con el color de
+        // cada una (gris si es la ciudad de origen del viaje u otra que no
+        // está en el catálogo de /ciudades), más el ícono de avión.
+        const origenId = ciudadIdPorNombre(traslado.origen);
+        const destinoId = ciudadIdPorNombre(traslado.destino);
+        const colorOrigen = origenId ? colorParaCiudad(origenId) : colorCss("--color-texto-suave");
+        const colorDestino = destinoId ? colorParaCiudad(destinoId) : colorCss("--color-texto-suave");
+        const zonaOrigen = (origenId && estado.ciudades[origenId].zonaHoraria) || estado.info.zonaOrigen || "America/Mexico_City";
+        celda.style.background = `linear-gradient(to right, ${colorOrigen} 0 50%, ${colorDestino} 50% 100%)`;
+        celda.style.color = "#fff2eb";
+        celda.title = `Traslado ${formatoHora(traslado.inicioUTC, zonaOrigen)}: ${traslado.origen} → ${traslado.destino}`;
+        celda.innerHTML = `
+          <span class="ct-fecha">${fechaCorta}</span>
+          <span class="ct-ciudad">${icono("plane", 14, "icono-texto")}${esc(traslado.origen)} → ${esc(traslado.destino)}</span>
+        `;
+      } else if (ciudadId && estado.ciudades[ciudadId]) {
         celda.style.background = colorParaCiudad(ciudadId);
         celda.style.color = "#fff2eb";
         celda.innerHTML = `<span class="ct-fecha">${fechaCorta}</span><span class="ct-ciudad">${esc(estado.ciudades[ciudadId].nombre)}</span>`;
@@ -111,6 +146,7 @@ async function montarVistaRuta(contenedor, tripId, sesion) {
   const cancelarInfo = escuchar(refInfo, v => { estado.info = v; solicitarRender(); });
   const cancelarCiudades = escuchar(refCiudades, v => { estado.ciudades = v; solicitarRender(); });
   const cancelarCiudadPorDia = escuchar(refCiudadPorDia, v => { estado.ciudadPorDiaManual = v; solicitarRender(); });
+  const cancelarTraslados = escuchar(refTraslados, v => { estado.traslados = v; solicitarRender(); });
 
-  return () => { cancelarInfo(); cancelarCiudades(); cancelarCiudadPorDia(); };
+  return () => { cancelarInfo(); cancelarCiudades(); cancelarCiudadPorDia(); cancelarTraslados(); };
 }
